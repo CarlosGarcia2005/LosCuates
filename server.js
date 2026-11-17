@@ -69,29 +69,41 @@ app.use(manejadorErrores);
 process.on('unhandledRejection', (err) => console.error('[Promesa no controlada]', err));
 
 // ---------- Arranque ----------
-consulta(`
-  SELECT
-    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE LOWER(TABLE_NAME) = 'usuario' AND COLUMN_NAME = 'MFA_Activo') AS mfa,
-    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES
-      WHERE LOWER(TABLE_NAME) = 'bitacora') AS bitacora,
-    (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-      WHERE LOWER(TABLE_NAME) = 'pago' AND COLUMN_NAME = 'Comprobante') AS reservas`)
-  .then(([r]) => {
-    if (!Number(r.mfa) || !Number(r.bitacora)) {
-      console.error('✘ Falta ejecutar el script sql/02_seguridad_y_bitacora.sql en SQL Server.');
+async function revisarBaseDeDatos() {
+  const [r] = await consulta(`
+    SELECT
+      (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE LOWER(TABLE_NAME) = 'usuario' AND COLUMN_NAME = 'MFA_Activo') AS mfa,
+      (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES
+        WHERE LOWER(TABLE_NAME) = 'bitacora') AS bitacora,
+      (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE LOWER(TABLE_NAME) = 'pago' AND COLUMN_NAME = 'Comprobante') AS reservas`);
+  if (!Number(r.mfa) || !Number(r.bitacora)) {
+    throw new Error('Falta ejecutar el script sql/02_seguridad_y_bitacora.sql en SQL Server.');
+  }
+  if (!Number(r.reservas)) {
+    throw new Error('Falta ejecutar el script sql/03_canchas_y_reservas.sql en SQL Server.');
+  }
+}
+
+if (process.env.VERCEL) {
+  // En Vercel no se levanta servidor: solo se revisa la BD y se avisa en los logs
+  revisarBaseDeDatos()
+    .then(() => console.log('✔ Conectado a SQL Server'))
+    .catch((err) => console.error('✘ Base de datos:', err.message));
+} else {
+  // En tu computadora funciona igual que antes
+  revisarBaseDeDatos()
+    .then(() => {
+      console.log(`✔ Conectado a SQL Server (${process.env.DB_NAME} en ${process.env.DB_HOST})`);
+      app.listen(PORT, () => console.log(`✔ Servidor listo en http://localhost:${PORT}`));
+    })
+    .catch((err) => {
+      console.error('✘ No se pudo conectar a SQL Server:', err.message);
+      console.error('  Revisa los datos de tu archivo .env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)');
+      console.error('  y que el servicio SQL Server Browser esté encendido si usas una instancia con nombre.');
       process.exit(1);
-    }
-    if (!Number(r.reservas)) {
-      console.error('✘ Falta ejecutar el script sql/03_canchas_y_reservas.sql en SQL Server.');
-      process.exit(1);
-    }
-    console.log(`✔ Conectado a SQL Server (${process.env.DB_NAME} en ${process.env.DB_HOST})`);
-    app.listen(PORT, () => console.log(`✔ Servidor listo en http://localhost:${PORT}`));
-  })
-  .catch((err) => {
-    console.error('✘ No se pudo conectar a SQL Server:', err.message);
-    console.error('  Revisa los datos de tu archivo .env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)');
-    console.error('  y que el servicio SQL Server Browser esté encendido si usas una instancia con nombre.');
-    process.exit(1);
-  });
+    });
+}
+
+module.exports = app;
