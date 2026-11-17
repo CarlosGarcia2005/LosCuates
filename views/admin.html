@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de administración | Rancho Seco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ===================== MENÚ LATERAL ===================== -->
+  <aside class="lateral">
+    <div class="lateral__marca">
+      <div class="lateral__logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="1.5"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5h2.5v5H2.5M21.5 9.5H19v5h2.5"/></svg>
+      </div>
+      <div><span>GESTIÓN DEPORTIVA</span><strong>RANCHO SECO</strong></div>
+    </div>
+
+    <nav class="menu" aria-label="Menú principal">
+      <p class="menu__titulo">Administración</p>
+      <a href="#dashboard" data-seccion="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Dashboard
+      </a>
+      <a href="#reservas" data-seccion="reservas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18M8 14h2M14 14h2M8 17.5h2"/></svg>
+        Reservas
+      </a>
+      <a href="#canchas" data-seccion="canchas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="1.5"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5h2.5v5H2.5M21.5 9.5H19v5h2.5"/></svg>
+        Canchas
+      </a>
+      <a href="#usuarios" data-seccion="usuarios">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.5c1.9.8 3 2.7 3 5.5"/></svg>
+        Usuarios
+      </a>
+      <a href="#roles" data-seccion="roles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z"/><circle cx="12" cy="11" r="2.5"/><path d="M8.5 16.5c.8-1.4 2-2 3.5-2s2.7.6 3.5 2"/></svg>
+        Roles
+      </a>
+      <a href="#bitacora" data-seccion="bitacora">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+        Bitácora
+      </a>
+      <p class="menu__titulo">Mi cuenta</p>
+      <a href="/perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Mi perfil
+      </a>
+    </nav>
+
+    <div class="lateral__usuario">
+      <span class="avatar" id="usuarioIniciales">–</span>
+      <div><strong id="usuarioNombre">Cargando…</strong><small id="usuarioRol"></small></div>
+      <button class="btn-salir" id="btnSalir" type="button" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="principal">
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section id="seccion-dashboard" data-seccion="dashboard" hidden>
+      <header class="encabezado">
+        <div><h1>Dashboard</h1><p id="saludo">Resumen general del complejo deportivo.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--secundario" type="button" id="btnRefrescarDashboard">Actualizar</button>
+        </div>
+      </header>
+      <div class="indicadores" id="indicadores"><p class="cargando">Cargando indicadores…</p></div>
+      <div class="rejilla-2">
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza"><div><h2>Usuarios por rol</h2><p>Total de cuentas registradas en cada rol</p></div></div>
+          <div class="tarjeta__cuerpo"><div class="barras" id="porRol"></div></div>
+        </article>
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza">
+            <div><h2>Actividad reciente</h2><p>Últimos movimientos de la bitácora</p></div>
+            <a href="#bitacora" class="boton boton--secundario">Ver todo</a>
+          </div>
+          <div class="tarjeta__cuerpo"><ul class="actividad" id="actividad"></ul></div>
+        </article>
+      </div>
+      <article class="tarjeta">
+        <div class="tarjeta__cabeza"><div><h2>Próximas reservas</h2><p>Reservas de hoy en adelante</p></div></div>
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Folio</th><th>Fecha</th><th>Horario</th><th>Cancha</th><th>Cliente</th><th>Estado</th></tr></thead>
+            <tbody id="proximasReservas"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ===================== RESERVAS ===================== -->
+    <section id="seccion-reservas" data-seccion="reservas" hidden>
+      <header class="encabezado">
+        <div><p class="kicker">Operación diaria</p><h1>Reservas</h1><p>Administra las reservas de canchas, su estado y los pagos asociados.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--secundario" type="button" id="btnExportarReservas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Exportar CSV</button>
+          <button class="boton boton--primario" type="button" id="btnNuevaReserva"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva reserva</button>
+        </div>
+      </header>
+      <div class="indicadores" id="indicadoresReservas"><p class="cargando">Cargando…</p></div>
+      <article class="tarjeta">
+        <form class="filtros" id="filtrosReservas" role="search">
+          <div class="campo campo--ancho"><label for="rsBuscar">Buscar</label><input id="rsBuscar" name="q" type="search" placeholder="Cliente, folio o equipo" maxlength="60"></div>
+          <div class="campo"><label for="rsDesde">Fecha desde</label><input id="rsDesde" name="desde" type="date"></div>
+          <div class="campo"><label for="rsHasta">Fecha hasta</label><input id="rsHasta" name="hasta" type="date"></div>
+          <div class="campo"><label for="rsEstado">Estado</label>
+            <select id="rsEstado" name="estado">
+              <option value="">Todos los estados</option>
+              <option value="pendiente">Pendiente de pago</option>
+              <option value="por_validar">Por validar</option>
+              <option value="pagada">Pagada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="finalizada">Finalizada</option>
+            </select>
+          </div>
+          <button class="boton boton--secundario" type="reset">Limpiar filtros</button>
+        </form>
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Folio</th><th>Cliente / equipo</th><th>Cancha</th><th>Fecha</th><th>Hora</th><th>Pago</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="tablaReservas"></tbody>
+          </table>
+        </div>
+        <div class="paginacion">
+          <span id="infoReservas"></span>
+          <div>
+            <button class="boton boton--secundario" type="button" id="btnReservasAnterior">Anterior</button>
+            <button class="boton boton--secundario" type="button" id="btnReservasSiguiente">Siguiente</button>
+          </div>
+        </div>
+      </article>
+      <input type="file" id="archivoComprobanteFila" accept="image/png,image/jpeg,application/pdf" hidden>
+    </section>
+
+    <!-- ===================== CANCHAS ===================== -->
+    <section id="seccion-canchas" data-seccion="canchas" hidden>
+      <header class="encabezado">
+        <div><p class="kicker">Instalaciones</p><h1>Canchas</h1><p>Administra el estado y la disponibilidad de las instalaciones deportivas.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--primario" type="button" id="btnNuevaCancha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nueva cancha</button>
+        </div>
+      </header>
+      <div class="indicadores indicadores--3" id="indicadoresCanchas"><p class="cargando">Cargando…</p></div>
+      <article class="tarjeta">
+        <div class="tarjeta__cabeza">
+          <div><h2>Listado de canchas</h2><p id="subtituloCanchas"></p></div>
+        </div>
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Nombre de la cancha</th><th>Tipo</th><th>Estado operativo</th><th>Próximas reservas</th><th></th></tr></thead>
+            <tbody id="tablaCanchas"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================== USUARIOS ===================== -->
+    <section id="seccion-usuarios" data-seccion="usuarios" hidden>
+      <header class="encabezado">
+        <div><h1>Usuarios</h1><p>Crea cuentas y edita sus datos, rol y estado.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--primario" type="button" id="btnNuevoUsuario">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo usuario
+          </button>
+        </div>
+      </header>
+      <article class="tarjeta">
+        <form class="filtros" id="filtrosUsuarios" role="search">
+          <div class="campo campo--ancho"><label for="fBuscar">Buscar</label><input id="fBuscar" name="buscar" type="search" placeholder="Nombre, apellido o correo" maxlength="50"></div>
+          <div class="campo"><label for="fRol">Rol</label><select id="fRol" name="idRol"><option value="">Todos</option></select></div>
+          <div class="campo"><label for="fEstado">Estado</label><select id="fEstado" name="estado"><option value="">Todos</option><option>Activo</option><option>Inactivo</option></select></div>
+        </form>
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Usuario</th><th>Rol</th><th>Teléfono</th><th>Estado</th><th>MFA</th><th>Último acceso</th><th></th></tr></thead>
+            <tbody id="tablaUsuarios"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================== ROLES ===================== -->
+    <section id="seccion-roles" data-seccion="roles" hidden>
+      <header class="encabezado">
+        <div><h1>Roles</h1><p>Define los roles y si tienen acceso de administrador o de usuario.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--primario" type="button" id="btnNuevoRol">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Nuevo rol
+          </button>
+        </div>
+      </header>
+      <article class="tarjeta">
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Rol</th><th>Nivel de acceso</th><th>Usuarios</th><th>Activos</th><th></th></tr></thead>
+            <tbody id="tablaRoles"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================== BITÁCORA ===================== -->
+    <section id="seccion-bitacora" data-seccion="bitacora" hidden>
+      <header class="encabezado">
+        <div><h1>Bitácora administrativa</h1><p>Todos los movimientos del sistema: quién, qué, cuándo, desde dónde y qué cambió.</p></div>
+        <div class="encabezado__acciones">
+          <button class="boton boton--secundario" type="button" id="btnExportar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Exportar CSV
+          </button>
+        </div>
+      </header>
+      <article class="tarjeta">
+        <form class="filtros" id="filtrosBitacora" role="search">
+          <div class="campo"><label for="bDesde">Desde</label><input id="bDesde" name="desde" type="date"></div>
+          <div class="campo"><label for="bHasta">Hasta</label><input id="bHasta" name="hasta" type="date"></div>
+          <div class="campo"><label for="bUsuario">Usuario</label><input id="bUsuario" name="usuario" type="search" placeholder="Correo" maxlength="100"></div>
+          <div class="campo"><label for="bAccion">Acción</label><select id="bAccion" name="accion"><option value="">Todas</option></select></div>
+          <div class="campo"><label for="bModulo">Módulo</label><select id="bModulo" name="modulo"><option value="">Todos</option></select></div>
+          <div class="campo"><label for="bResultado">Resultado</label><select id="bResultado" name="resultado"><option value="">Todos</option><option>Éxito</option><option>Fallo</option></select></div>
+          <div class="campo campo--ancho"><label for="bTexto">Texto</label><input id="bTexto" name="q" type="search" placeholder="Buscar en descripción, datos o IP" maxlength="200"></div>
+          <button class="boton boton--secundario" type="reset">Limpiar</button>
+        </form>
+        <div class="tabla-contenedor">
+          <table>
+            <thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Descripción</th><th>Resultado</th><th>IP</th></tr></thead>
+            <tbody id="tablaBitacora"></tbody>
+          </table>
+        </div>
+        <div class="paginacion">
+          <span id="infoPaginacion"></span>
+          <div>
+            <button class="boton boton--secundario" type="button" id="btnAnterior">Anterior</button>
+            <button class="boton boton--secundario" type="button" id="btnSiguiente">Siguiente</button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== DIÁLOGO: USUARIO ===================== -->
+<dialog id="dlgUsuario" aria-labelledby="dlgUsuarioTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgUsuarioTitulo">Nuevo usuario</h2><p id="dlgUsuarioSub">Todos los campos con * son obligatorios.</p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formUsuario" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <div class="campo"><label for="uNombre">Nombre *</label><input id="uNombre" name="nombre" maxlength="45" autocomplete="off"><small data-error="nombre"></small></div>
+      <div class="campo"><label for="uApP">Apellido paterno *</label><input id="uApP" name="apellidoPaterno" maxlength="20" autocomplete="off"><small data-error="apellidoPaterno"></small></div>
+      <div class="campo"><label for="uApM">Apellido materno <span class="opcional">(opcional)</span></label><input id="uApM" name="apellidoMaterno" maxlength="20" autocomplete="off"><small data-error="apellidoMaterno"></small></div>
+      <div class="campo"><label for="uTel">Teléfono <span class="opcional">(10 dígitos)</span></label><input id="uTel" name="telefono" inputmode="numeric" maxlength="12" autocomplete="off"><small data-error="telefono"></small></div>
+      <div class="campo"><label for="uCorreo">Correo *</label><input id="uCorreo" name="correo" type="email" maxlength="50" autocomplete="off"><small data-error="correo"></small></div>
+      <div class="campo"><label for="uGenero">Género *</label><select id="uGenero" name="idGenero"></select><small data-error="idGenero"></small></div>
+      <div class="campo"><label for="uRol">Rol *</label><select id="uRol" name="idRol"></select><small data-error="idRol"></small></div>
+      <div class="campo"><label for="uEstado">Estado *</label><select id="uEstado" name="estado"><option>Activo</option><option>Inactivo</option></select><small data-error="estado"></small></div>
+      <div class="campo" data-solo-nuevo><label for="uPass">Contraseña inicial *</label><input id="uPass" name="contrasena" type="password" maxlength="72" autocomplete="new-password"><small data-error="contrasena"></small><span class="ayuda">Mínimo 8 caracteres, con letras y números.</span></div>
+      <div class="campo" data-solo-nuevo><label for="uPass2">Confirmar contraseña *</label><input id="uPass2" name="confirmar" type="password" maxlength="72" autocomplete="new-password"><small data-error="confirmar"></small></div>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--primario" type="submit" id="btnGuardarUsuario">Guardar</button>
+      </div>
+    </form>
+    <div id="accionesSeguridad" hidden>
+      <p class="subtitulo">Seguridad de la cuenta</p>
+      <div class="encabezado__acciones">
+        <button class="boton boton--secundario" type="button" id="btnAsignarContrasena">Asignar nueva contraseña</button>
+        <button class="boton boton--secundario" type="button" id="btnDesbloquear">Desbloquear cuenta</button>
+        <button class="boton boton--peligro" type="button" id="btnResetMfa">Restablecer MFA</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ===================== DIÁLOGO: CONTRASEÑA ===================== -->
+<dialog id="dlgContrasena" class="dialogo--chico" aria-labelledby="dlgContrasenaTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgContrasenaTitulo">Asignar nueva contraseña</h2><p id="dlgContrasenaSub"></p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formContrasena" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <div class="campo campo--completo"><label for="cNueva">Nueva contraseña</label><input id="cNueva" name="nueva" type="password" maxlength="72" autocomplete="new-password"><small data-error="nueva"></small></div>
+      <div class="campo campo--completo"><label for="cConfirmar">Confirmar contraseña</label><input id="cConfirmar" name="confirmar" type="password" maxlength="72" autocomplete="new-password"><small data-error="confirmar"></small></div>
+      <p class="ayuda campo--completo">Se cerrarán todas las sesiones abiertas de este usuario.</p>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--primario" type="submit">Guardar contraseña</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===================== DIÁLOGO: ROL ===================== -->
+<dialog id="dlgRol" class="dialogo--chico" aria-labelledby="dlgRolTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgRolTitulo">Nuevo rol</h2><p>El nivel decide qué pantalla ve el usuario al iniciar sesión.</p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formRol" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <div class="campo campo--completo"><label for="rNombre">Nombre del rol</label><input id="rNombre" name="rol" maxlength="30" autocomplete="off"><small data-error="rol"></small></div>
+      <div class="campo campo--completo">
+        <label for="rNivel">Nivel de acceso</label>
+        <select id="rNivel" name="nivel"><option value="Usuario">Usuario — solo su perfil</option><option value="Administrador">Administrador — panel completo</option></select>
+        <small data-error="nivel"></small>
+      </div>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--primario" type="submit">Guardar rol</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===================== DIÁLOGO: DETALLE BITÁCORA ===================== -->
+<dialog id="dlgBitacora" class="dialogo--grande" aria-labelledby="dlgBitacoraTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgBitacoraTitulo">Detalle del movimiento</h2><p id="dlgBitacoraSub"></p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo" id="detalleBitacora"></div>
+</dialog>
+
+
+<!-- ===================== PANEL: CANCHA ===================== -->
+<dialog id="dlgCancha" class="panel" aria-labelledby="dlgCanchaTitulo">
+  <form id="formCancha" class="panel__form" novalidate>
+    <header class="panel__cabeza">
+      <div>
+        <p class="kicker" id="dlgCanchaKicker">Nuevo registro</p>
+        <h2 id="dlgCanchaTitulo">Nueva cancha</h2>
+        <p>Agrega o actualiza una instalación deportiva.</p>
+      </div>
+      <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+    </header>
+    <div class="panel__cuerpo">
+      <p class="form-error" hidden></p>
+      <div class="campo">
+        <label for="cnNombre">Nombre de la cancha</label>
+        <input id="cnNombre" name="nombre" maxlength="20" placeholder="Ej. Cancha Azul" autocomplete="off">
+        <small data-error="nombre"></small>
+        <span class="ayuda">Usa un nombre breve y fácil de identificar.</span>
+      </div>
+      <div class="campo">
+        <label for="cnTipo">Tipo de cancha</label>
+        <select id="cnTipo" name="idTipo"></select>
+        <small data-error="idTipo"></small>
+      </div>
+      <fieldset class="campo opciones-tarjeta">
+        <legend>Estado operativo</legend>
+        <span class="ayuda">Define si la cancha puede recibir reservaciones.</span>
+        <div class="opciones-tarjeta__lista">
+          <label class="opcion-tarjeta">
+            <input type="radio" name="estado" value="Activa" checked>
+            <span class="punto punto--verde"></span>
+            <span><strong>Activa</strong><small>Disponible</small></span>
+          </label>
+          <label class="opcion-tarjeta">
+            <input type="radio" name="estado" value="Inactiva">
+            <span class="punto punto--rojo"></span>
+            <span><strong>Inactiva</strong><small>No disponible</small></span>
+          </label>
+        </div>
+        <small data-error="estado"></small>
+      </fieldset>
+    </div>
+    <footer class="panel__pie">
+      <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+      <button class="boton boton--primario" type="submit" id="btnGuardarCancha">Guardar cancha</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- ===================== PANEL: RESERVA / PAGO ===================== -->
+<dialog id="dlgReserva" class="panel panel--ancho" aria-labelledby="dlgReservaTitulo">
+  <form id="formReserva" class="panel__form" novalidate>
+    <header class="panel__cabeza">
+      <div>
+        <p class="kicker">Nueva operación</p>
+        <h2 id="dlgReservaTitulo">Registrar reserva / pago</h2>
+        <p>Completa los datos de la reservación.</p>
+      </div>
+      <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+    </header>
+    <div class="panel__cuerpo">
+      <p class="form-error" hidden></p>
+
+      <p class="paso-titulo"><span>01</span>Datos de la reserva</p>
+      <div class="campo">
+        <label for="rvFolio">Folio de reserva</label>
+        <select id="rvFolio" name="idReserva"></select>
+        <span class="ayuda" id="rvFolioAyuda">Elige "Nueva reserva" o una reserva pendiente para registrar su pago.</span>
+      </div>
+      <div class="rejilla-campos">
+        <div class="campo"><label for="rvCliente">Cliente</label><select id="rvCliente" name="idUsuario"></select><small data-error="idUsuario"></small></div>
+        <div class="campo"><label for="rvEquipo">Equipo <span class="opcional">(opcional)</span></label><select id="rvEquipo" name="idEquipo"></select><small data-error="idEquipo"></small></div>
+      </div>
+      <div class="campo"><label for="rvCancha">Cancha</label><select id="rvCancha" name="idCancha"></select><small data-error="idCancha"></small></div>
+      <div class="rejilla-campos">
+        <div class="campo"><label for="rvFecha">Fecha</label><input id="rvFecha" name="fecha" type="date"><small data-error="fecha"></small></div>
+        <div class="campo"><label for="rvHorario">Horario</label><select id="rvHorario" name="horario"></select><small data-error="horario"></small></div>
+      </div>
+
+      <p class="paso-titulo"><span>02</span>Información de pago</p>
+      <fieldset class="campo">
+        <legend>Método de pago</legend>
+        <div class="segmentos" id="rvMetodos"></div>
+        <small data-error="idMetodoPago"></small>
+      </fieldset>
+      <div class="campo">
+        <label for="rvMonto">Monto</label>
+        <div class="campo-dinero"><span>$</span><input id="rvMonto" name="monto" inputmode="decimal" maxlength="9" placeholder="0.00" autocomplete="off"><span>MXN</span></div>
+        <small data-error="monto"></small>
+        <span class="ayuda" id="rvMontoAyuda">Déjalo vacío si el cliente pagará después.</span>
+      </div>
+      <div class="campo">
+        <label for="rvDescripcion">Descripción <span class="opcional">(opcional)</span></label>
+        <textarea id="rvDescripcion" name="descripcion" rows="3" maxlength="255" placeholder="Escribe una descripción de la reserva…"></textarea>
+        <small data-error="descripcion"></small>
+      </div>
+      <div class="campo">
+        <span class="etiqueta-campo">Comprobante <span class="opcional">(opcional)</span></span>
+        <label class="zona-archivo" id="rvZona" for="rvArchivo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+          <strong id="rvZonaTitulo">Sube tu comprobante</strong>
+          <small id="rvZonaTexto">Arrastra el archivo o haz clic para buscar · PNG, JPG o PDF · Máx. 5 MB</small>
+        </label>
+        <input type="file" id="rvArchivo" accept="image/png,image/jpeg,application/pdf" class="solo-lector">
+        <button class="btn-quitar" type="button" id="rvQuitarArchivo" hidden>Quitar archivo</button>
+        <small data-error="comprobante"></small>
+      </div>
+    </div>
+    <footer class="panel__pie">
+      <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+      <button class="boton boton--primario" type="submit" id="btnGuardarReserva">Registrar reserva / pago</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- ===================== DIÁLOGO: CONFIRMAR ===================== -->
+<dialog id="dlgConfirmar" class="dialogo--chico" aria-labelledby="dlgConfirmarTitulo">
+  <div class="dialogo__cabeza"><div><h2 id="dlgConfirmarTitulo">¿Confirmar?</h2><p id="dlgConfirmarTexto"></p></div></div>
+  <div class="dialogo__cuerpo">
+    <div class="form-acciones">
+      <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+      <button class="boton boton--peligro" type="button" id="btnConfirmar">Confirmar</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="/js/validacion.js"></script>
+<script src="/js/comun.js"></script>
+<script src="/js/admin.js"></script>
+<script src="/js/canchas.js"></script>
+<script src="/js/reservas.js"></script>
+</body>
+</html>

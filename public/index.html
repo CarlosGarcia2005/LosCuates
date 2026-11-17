@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso al sistema | Rancho Seco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+  <main class="login">
+
+    <!-- ============ PANEL IZQUIERDO ============ -->
+    <section class="brand">
+      <!-- líneas de cancha de fondo -->
+      <svg class="brand__field" viewBox="0 0 560 960" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="1" y="1" width="558" height="958" />
+        <line x1="280" y1="0" x2="280" y2="960" />
+        <circle cx="280" cy="480" r="100" />
+        <rect x="1" y="300" width="110" height="360" />
+        <rect x="449" y="300" width="110" height="360" />
+        <line x1="0" y1="640" x2="560" y2="640" />
+      </svg>
+
+      <header class="brand__header">
+        <div class="brand__logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.5" y="5" width="19" height="14" rx="1.5"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <circle cx="12" cy="12" r="2.6"/>
+            <path d="M2.5 9.5h2.5v5H2.5M21.5 9.5H19v5h2.5"/>
+          </svg>
+        </div>
+        <div class="brand__name">
+          <span>SISTEMA DE GESTIÓN DEPORTIVO</span>
+          <strong>RANCHO SECO</strong>
+        </div>
+      </header>
+
+      <div class="brand__content">
+        <span class="brand__accent"></span>
+        <h1>Gestiona tus canchas, reserva sin complicaciones.</h1>
+        <p>Sistema completo para administrar reservas, pagos y la operación diaria de tu complejo deportivo.</p>
+        <hr>
+        <div class="brand__secure">
+          <span class="brand__secure-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+          </span>
+          Operación segura, simple y centralizada
+        </div>
+      </div>
+
+      <footer class="brand__footer">© <span id="anio">2026</span> RANCHO SECO</footer>
+    </section>
+
+    <!-- ============ PANEL DERECHO ============ -->
+    <section class="access">
+      <!-- ilustración isométrica de cancha -->
+      <svg class="access__illustration" viewBox="0 0 700 520" aria-hidden="true">
+        <g class="iso-base">
+          <polygon points="350,120 680,290 350,460 20,290"/>
+          <polygon class="iso-side" points="20,290 350,460 350,500 20,330"/>
+          <polygon class="iso-side2" points="350,460 680,290 680,330 350,500"/>
+        </g>
+        <g class="iso-lines">
+          <polygon points="350,150 630,290 350,430 70,290"/>
+          <line x1="210" y1="220" x2="490" y2="360"/>
+          <ellipse cx="350" cy="290" rx="62" ry="32"/>
+          <polygon points="140,255 210,290 160,315 90,280"/>
+          <polygon points="560,255 610,280 540,315 490,290"/>
+        </g>
+        <g class="iso-pins">
+          <line x1="150" y1="220" x2="150" y2="175"/><circle cx="150" cy="170" r="7"/>
+          <line x1="640" y1="255" x2="640" y2="205"/><circle cx="640" cy="200" r="7"/>
+        </g>
+      </svg>
+      <div class="access__tag">RESERVA</div>
+
+      <div class="card">
+        <div class="card__avatar" id="cardIcono" aria-hidden="true">
+          <svg class="icono-usuario" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <svg class="icono-escudo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <h2 id="cardTitulo">Acceso al sistema</h2>
+        <p class="card__subtitle" id="cardSubtitulo">Ingresa tus credenciales para continuar</p>
+
+        <!-- ============ PASO 1: correo y contraseña ============ -->
+        <form id="formLogin" class="paso" novalidate>
+          <label for="correo">Usuario</label>
+          <div class="field">
+            <svg class="field__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <input type="email" id="correo" name="correo" placeholder="Ingresa tu correo" autocomplete="username" maxlength="50" required>
+          </div>
+          <small class="campo-error" data-error="correo"></small>
+
+          <label for="contrasena">Contraseña</label>
+          <div class="field">
+            <svg class="field__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input type="password" id="contrasena" name="contrasena" placeholder="Ingresa tu contraseña" autocomplete="current-password" maxlength="72" required>
+            <button type="button" class="field__toggle" id="verContrasena" aria-label="Mostrar contraseña">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <small class="campo-error" data-error="contrasena"></small>
+
+          <p class="form-error error" role="alert" hidden></p>
+
+          <button type="submit" class="btn" id="btnLogin">
+            <span>Iniciar sesión</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+
+        <!-- ============ PASO 2: código MFA ============ -->
+        <form id="formMfa" class="paso" novalidate hidden>
+          <div class="mfa-config" id="mfaConfig" hidden>
+            <ol class="mfa-pasos">
+              <li>Abre <strong>Google Authenticator</strong> o <strong>Microsoft Authenticator</strong> en tu celular.</li>
+              <li>Toca <strong>+</strong> y escanea este código.</li>
+              <li>Escribe abajo el código de 6 dígitos que aparece.</li>
+            </ol>
+            <img id="mfaQr" class="mfa-qr" alt="Código QR para vincular tu app Authenticator" width="220" height="220">
+            <details class="mfa-clave">
+              <summary>¿No puedes escanear? Escribe la clave a mano</summary>
+              <code id="mfaSecreto"></code>
+              <p>Cuenta: <span id="mfaCuenta"></span> · Tipo: basada en tiempo</p>
+            </details>
+          </div>
+
+          <label for="codigo">Código de verificación</label>
+          <div class="field">
+            <svg class="field__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            <input type="text" id="codigo" name="codigo" class="input-codigo" placeholder="000000"
+                   inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" required>
+          </div>
+          <small class="campo-error" data-error="codigo"></small>
+          <p class="mfa-tiempo">Tienes 5 minutos para escribir el código.</p>
+
+          <p class="form-error error" role="alert" hidden></p>
+
+          <button type="submit" class="btn" id="btnMfa">
+            <span>Verificar y entrar</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" class="btn-link" id="btnVolver">← Usar otra cuenta</button>
+        </form>
+
+        <div class="hint" id="hintContrasena">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>La contraseña debe tener al menos 8 caracteres e incluir letras y números.</span>
+        </div>
+      </div>
+
+      <p class="help">¿Necesitas ayuda? <a href="mailto:admin@ranchoseco.com">Contacta al administrador</a></p>
+    </section>
+  </main>
+
+  <script src="js/validacion.js"></script>
+  <script src="js/comun.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

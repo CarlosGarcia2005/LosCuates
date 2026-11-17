@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi perfil | Rancho Seco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="lateral">
+    <div class="lateral__marca">
+      <div class="lateral__logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="1.5"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5h2.5v5H2.5M21.5 9.5H19v5h2.5"/></svg>
+      </div>
+      <div><span>GESTIÓN DEPORTIVA</span><strong>RANCHO SECO</strong></div>
+    </div>
+
+    <nav class="menu" aria-label="Menú principal">
+      <p class="menu__titulo">Mi cuenta</p>
+      <a href="#perfil" data-seccion="perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Mi perfil
+      </a>
+      <a href="#editar" data-seccion="editar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></svg>
+        Editar información
+      </a>
+      <a href="#seguridad" data-seccion="seguridad">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Seguridad
+      </a>
+      <a href="/admin" id="enlaceAdmin" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Panel de administración
+      </a>
+    </nav>
+
+    <div class="lateral__usuario">
+      <span class="avatar" id="usuarioIniciales">–</span>
+      <div><strong id="usuarioNombre">Cargando…</strong><small id="usuarioRol"></small></div>
+      <button class="btn-salir" id="btnSalir" type="button" title="Cerrar sesión" aria-label="Cerrar sesión">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="principal">
+
+    <!-- ===================== PERFIL ===================== -->
+    <section data-seccion="perfil" hidden>
+      <header class="encabezado"><div><h1>Mi perfil</h1><p>Tu información en el sistema.</p></div></header>
+      <div class="pila">
+        <article class="tarjeta">
+          <div class="perfil-cabeza">
+            <span class="avatar" id="perfilIniciales">–</span>
+            <div>
+              <h2 id="perfilNombre">Cargando…</h2>
+              <p id="perfilCorreo"></p>
+              <div class="etiquetas" id="perfilEtiquetas"></div>
+            </div>
+          </div>
+          <dl class="datos-lista" id="perfilDatos"></dl>
+        </article>
+        <div class="aviso-permisos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>
+          <span>Tu <strong>rol</strong>, tu <strong>estado</strong> y tus <strong>permisos</strong> solo los puede cambiar un administrador. Desde aquí puedes actualizar tu información personal y tu contraseña.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== EDITAR ===================== -->
+    <section data-seccion="editar" hidden>
+      <header class="encabezado"><div><h1>Editar información personal</h1><p>Para guardar te pediremos el código de tu app Authenticator.</p></div></header>
+      <article class="tarjeta">
+        <div class="tarjeta__cuerpo">
+          <form id="formPerfil" class="formulario" novalidate>
+            <p class="form-error" hidden></p>
+            <div class="campo"><label for="pNombre">Nombre *</label><input id="pNombre" name="nombre" maxlength="45" autocomplete="given-name"><small data-error="nombre"></small></div>
+            <div class="campo"><label for="pApP">Apellido paterno *</label><input id="pApP" name="apellidoPaterno" maxlength="20" autocomplete="family-name"><small data-error="apellidoPaterno"></small></div>
+            <div class="campo"><label for="pApM">Apellido materno <span class="opcional">(opcional)</span></label><input id="pApM" name="apellidoMaterno" maxlength="20"><small data-error="apellidoMaterno"></small></div>
+            <div class="campo"><label for="pTel">Teléfono <span class="opcional">(10 dígitos)</span></label><input id="pTel" name="telefono" inputmode="numeric" maxlength="12" autocomplete="tel"><small data-error="telefono"></small></div>
+            <div class="campo"><label for="pCorreo">Correo *</label><input id="pCorreo" name="correo" type="email" maxlength="50" autocomplete="email"><small data-error="correo"></small><span class="ayuda">Es el usuario con el que inicias sesión.</span></div>
+            <div class="campo"><label for="pGenero">Género *</label><select id="pGenero" name="idGenero"></select><small data-error="idGenero"></small></div>
+            <div class="campo"><label for="pRol">Rol</label><input id="pRol" disabled><span class="ayuda">Solo un administrador puede cambiarlo.</span></div>
+            <div class="campo"><label for="pEstado">Estado</label><input id="pEstado" disabled><span class="ayuda">Solo un administrador puede cambiarlo.</span></div>
+            <div class="form-acciones">
+              <button class="boton boton--secundario" type="button" id="btnDeshacer">Deshacer cambios</button>
+              <button class="boton boton--primario" type="submit">Guardar cambios</button>
+            </div>
+          </form>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===================== SEGURIDAD ===================== -->
+    <section data-seccion="seguridad" hidden>
+      <header class="encabezado"><div><h1>Seguridad</h1><p>Cambia tu contraseña. También se confirma con tu código MFA.</p></div></header>
+      <div class="pila">
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza"><div><h2>Verificación en dos pasos (MFA)</h2><p id="estadoMfa">Activa</p></div><span class="etiqueta etiqueta--verde">Protegida</span></div>
+          <div class="tarjeta__cuerpo texto-tenue">Cada vez que inicies sesión o cambies tus datos te pediremos el código de 6 dígitos de tu app Authenticator. Si cambias de celular, pide a un administrador que restablezca tu MFA.</div>
+        </article>
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza"><div><h2>Cambiar contraseña</h2><p>Se cerrarán tus sesiones abiertas en otros equipos.</p></div></div>
+          <div class="tarjeta__cuerpo">
+            <form id="formClave" class="formulario" novalidate>
+              <p class="form-error" hidden></p>
+              <div class="campo campo--completo"><label for="sActual">Contraseña actual</label><input id="sActual" name="actual" type="password" maxlength="72" autocomplete="current-password"><small data-error="actual"></small></div>
+              <div class="campo"><label for="sNueva">Nueva contraseña</label><input id="sNueva" name="nueva" type="password" maxlength="72" autocomplete="new-password"><small data-error="nueva"></small><span class="ayuda">Mínimo 8 caracteres, con letras y números.</span></div>
+              <div class="campo"><label for="sConfirmar">Confirmar nueva contraseña</label><input id="sConfirmar" name="confirmar" type="password" maxlength="72" autocomplete="new-password"><small data-error="confirmar"></small></div>
+              <div class="campo campo--completo zona-mfa">
+                <p><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/></svg>Escribe el código de 6 dígitos de tu app Authenticator para confirmar.</p>
+                <label for="sCodigo">Código MFA</label>
+                <input id="sCodigo" name="codigo" class="input-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+                <small data-error="codigo"></small>
+              </div>
+              <div class="form-acciones"><button class="boton boton--primario" type="submit">Cambiar contraseña</button></div>
+            </form>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== DIÁLOGO: CONFIRMAR CON MFA ===================== -->
+<dialog id="dlgMfa" class="dialogo--chico" aria-labelledby="dlgMfaTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgMfaTitulo">Confirma con tu código</h2><p>Abre tu app Authenticator y escribe el código de 6 dígitos de Rancho Seco.</p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formMfa" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <div class="campo campo--completo">
+        <label for="mCodigo">Código MFA</label>
+        <input id="mCodigo" name="codigo" class="input-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+        <small data-error="codigo"></small>
+      </div>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--primario" type="submit">Confirmar y guardar</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<script src="/js/validacion.js"></script>
+<script src="/js/comun.js"></script>
+<script src="/js/perfil.js"></script>
+</body>
+</html>

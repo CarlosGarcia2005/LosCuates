@@ -1,0 +1,22 @@
+{
+  "name": "rancho-seco-app",
+  "version": "2.0.0",
+  "description": "Gestor Deportivo Rancho Seco - Login con MFA (JWT), panel de administrador, perfil y bitácora (SQL Server)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/seguridad.test.js",
+    "generar-claves": "node -e \"const c=require('crypto');console.log('JWT_SECRET='+c.randomBytes(48).toString('hex'));console.log('MFA_CLAVE='+c.randomBytes(32).toString('hex'))\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mssql": "^11.0.1",
+    "qrcode": "^1.5.4"
+  }
+}
