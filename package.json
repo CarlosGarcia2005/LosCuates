@@ -10,7 +10,7 @@
     "generar-claves": "node -e \"const c=require('crypto');console.log('JWT_SECRET='+c.randomBytes(48).toString('hex'));console.log('MFA_CLAVE='+c.randomBytes(32).toString('hex'))\""
   },
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
