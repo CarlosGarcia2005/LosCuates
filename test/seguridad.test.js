@@ -87,13 +87,17 @@ test('Validación de formularios', () => {
   assert.ok(V.validarLogin({ correo: 'no-es-correo', contrasena: 'x' }).errores.correo);
 
   const ok = V.validarUsuarioAdmin({
-    nombre: ' Damián ', apellidoPaterno: 'García', apellidoMaterno: '', telefono: '844 602 7156',
+    nombre: ' Damián ', apellidoPaterno: 'García', apellidoMaterno: '', telefono: '8446027156',
     correo: 'd@x.com', idGenero: '1', idRol: '2', estado: 'Activo', contrasena: 'Abcdefg1', confirmar: 'Abcdefg1'
   }, { nuevo: true });
   assert.equal(ok.ok, true, JSON.stringify(ok.errores));
   assert.equal(ok.datos.nombre, 'Damián');
   assert.equal(ok.datos.telefono, '8446027156');
   assert.equal(ok.datos.apellidoMaterno, null);
+  // El teléfono solo acepta números: espacios, guiones o letras se rechazan
+  for (const t of ['844 602 7156', '844-602-7156', '84460271a6', '+528446027156']) {
+    assert.ok(V.validarUsuarioAdmin({ nombre: 'Ana', apellidoPaterno: 'Paz', telefono: t, correo: 'a@x.com', idGenero: 1, idRol: 2, estado: 'Activo' }).errores.telefono, t);
+  }
 
   const mal = V.validarUsuarioAdmin({
     nombre: '<script>', apellidoPaterno: 'G', telefono: '123', correo: 'x', idGenero: 'a', idRol: 0,

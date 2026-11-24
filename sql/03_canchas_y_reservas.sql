@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 --  Gestor Deportivo Rancho Seco  (SQL Server)
 --  03 - Canchas y Reservas
 -- ---------------------------------------------------------------------
@@ -7,9 +7,6 @@
 --    que pueda modificar tablas (Autenticación de Windows o sa).
 --  * Se puede ejecutar más de una vez. NO borra datos.
 -- =====================================================================
-USE GestorDeportivoRanchoSeco;
-GO
-
 SET NOCOUNT ON;
 GO
 

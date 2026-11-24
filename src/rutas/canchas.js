@@ -4,11 +4,12 @@
 // =====================================================================
 const express = require('express');
 
-const { consulta, insertar, transaccion } = require('../../config/db');
+const { consulta, transaccion } = require('../../config/db');
 const V = require('../../public/js/validacion');
 const bitacora = require('../bitacora');
 const { contexto } = require('../autenticacion');
-const { ErrorApp, errorValidacion, asincrono } = require('../errores');
+const { soloCampos } = require('../seguridad/campos');
+const { ErrorApp, errorValidacion, validacionEvadida, asincrono } = require('../errores');
 
 const router = express.Router();
 
@@ -61,12 +62,12 @@ router.get('/', asincrono(async (req, res) => {
   });
 }));
 
-router.post('/', contexto('CANCHA_CREADA', 'Canchas', 'Cancha'), asincrono(async (req, res) => {
+router.post('/', contexto('CANCHA_CREADA', 'Canchas', 'Cancha'), soloCampos(['nombre', 'idTipo', 'estado']), asincrono(async (req, res) => {
   const v = V.validarCancha(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
   await revisarDatos(v.datos);
 
-  const r = await insertar(
+  const r = await consulta(
     'INSERT INTO Cancha (idTipo_Cancha, Cancha, Estado_Cancha) VALUES (@idTipo, @nombre, @estado)', v.datos);
   const nueva = await canchaPorId(r.insertId);
 
@@ -78,10 +79,10 @@ router.post('/', contexto('CANCHA_CREADA', 'Canchas', 'Cancha'), asincrono(async
   res.status(201).json({ mensaje: 'Cancha registrada correctamente.', cancha: nueva });
 }));
 
-router.put('/:id', contexto('CANCHA_EDITADA', 'Canchas', 'Cancha'), asincrono(async (req, res) => {
+router.put('/:id', contexto('CANCHA_EDITADA', 'Canchas', 'Cancha'), soloCampos(['nombre', 'idTipo', 'estado']), asincrono(async (req, res) => {
   const id = idValido(req.params.id);
   const v = V.validarCancha(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
 
   const antes = await canchaPorId(id);
   if (!antes) throw new ErrorApp(404, 'La cancha no existe.');
@@ -99,8 +100,7 @@ router.put('/:id', contexto('CANCHA_EDITADA', 'Canchas', 'Cancha'), asincrono(as
   if (antes.estado === 'Activa' && despues.estado === 'Inactiva') {
     const [p] = await consulta(`
       SELECT COUNT(*) AS total FROM Reserva r JOIN Estado_Reserva e ON e.idEstado_Reserva = r.idEstado_Reserva
-       WHERE r.idCancha = @id AND r.Fecha_Reserva >= CAST(GETDATE() AS DATE)
-         AND e.Estado_Reserva IN ('Pendiente', 'Confirmada')`, { id });
+       WHERE r.idCancha = @id AND r.Fecha_Reserva >= CAST(GETDATE() AS DATE) AND e.Estado_Reserva IN ('Pendiente', 'Confirmada')`, { id });
     if (Number(p.total)) aviso = ` Ojo: tiene ${p.total} reserva(s) próxima(s); revísalas en Reservas.`;
   }
 
@@ -114,17 +114,19 @@ router.put('/:id', contexto('CANCHA_EDITADA', 'Canchas', 'Cancha'), asincrono(as
   res.json({ mensaje: (dif.campos.length ? 'Cancha actualizada.' : 'No había cambios que guardar.') + aviso, cancha: despues });
 }));
 
-router.delete('/:id', contexto('CANCHA_ELIMINADA', 'Canchas', 'Cancha'), asincrono(async (req, res) => {
+router.delete('/:id', contexto('CANCHA_ELIMINADA', 'Canchas', 'Cancha'), soloCampos([]), asincrono(async (req, res) => {
   const id = idValido(req.params.id);
   const cancha = await canchaPorId(id);
   if (!cancha) throw new ErrorApp(404, 'La cancha no existe.');
 
   const [uso] = await consulta(`
     SELECT (SELECT COUNT(*) FROM Reserva WHERE idCancha = @id) AS reservas,
-           (SELECT COUNT(*) FROM Juego   WHERE idCancha = @id) AS juegos`, { id });
-  if (Number(uso.reservas) || Number(uso.juegos)) {
-    throw new ErrorApp(409, `No se puede eliminar "${cancha.nombre}" porque tiene ${uso.reservas} reserva(s) y ` +
-      `${uso.juegos} juego(s) registrados. Márcala como Inactiva para que ya no reciba reservas.`);
+           (SELECT COUNT(*) FROM Juego   WHERE idCancha = @id) AS juegos,
+           (SELECT COUNT(*) FROM Tarea_Limpieza WHERE idCancha = @id) +
+           (SELECT COUNT(*) FROM Reporte_Condicion WHERE idCancha = @id) AS limpieza`, { id });
+  if (Number(uso.reservas) || Number(uso.juegos) || Number(uso.limpieza)) {
+    throw new ErrorApp(409, `No se puede eliminar "${cancha.nombre}" porque tiene ${uso.reservas} reserva(s), ` +
+      `${uso.juegos} juego(s) y ${uso.limpieza} registro(s) de limpieza. Márcala como Inactiva para que ya no reciba reservas.`);
   }
 
   await consulta('DELETE FROM Cancha WHERE idCancha = @id', { id });

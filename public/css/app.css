@@ -477,3 +477,61 @@ fieldset.campo legend, .etiqueta-campo { font-weight: 600; font-size: .86rem; co
 .rejilla-campos > * { min-width: 0; }
 .panel select, .panel input:not([type=radio]):not([type=checkbox]), .panel textarea { width: 100%; min-width: 0; }
 .panel select { text-overflow: ellipsis; }
+
+/* ---------- Seguridad (OWASP) ---------- */
+.riesgos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.riesgo { display: flex; flex-direction: column; }
+.riesgo__cabeza { padding: 18px 20px 14px; border-bottom: 1px solid var(--borde); }
+.riesgo__id {
+  display: inline-block; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .78rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px; background: var(--verde-800); color: #fff; letter-spacing: .04em;
+}
+.riesgo__cabeza h2 { font-size: 1.02rem; font-weight: 700; margin-top: 10px; }
+.riesgo__numero { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.riesgo__numero strong { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.riesgo__numero span { color: var(--texto-3); font-size: .84rem; }
+.riesgo--alerta .riesgo__numero strong { color: var(--rojo); }
+.riesgo__detalle { color: var(--texto-2); font-size: .84rem; margin-top: 4px; line-height: 1.45; }
+.controles { list-style: none; padding: 14px 20px 18px; display: flex; flex-direction: column; gap: 12px; }
+.controles li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; font-size: .86rem; }
+.controles strong { display: block; font-weight: 600; }
+.controles small { color: var(--texto-3); line-height: 1.4; }
+.marca { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 800; margin-top: 1px; }
+.marca--activo { background: var(--verde-100); color: var(--verde-600); }
+.marca--atencion { background: var(--ambar-100); color: var(--ambar); }
+.marca--info { background: #e8eef9; color: #3b5ba5; }
+.controles .arreglo { display: block; margin-top: 4px; color: var(--texto-2); font-size: .8rem; }
+.controles .arreglo code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .76rem; background: #f3f5f4; padding: 1px 4px; border-radius: 4px; word-break: break-word; }
+.riesgo__boton { margin: 0 20px 18px; align-self: flex-start; }
+.riesgos__leyenda { display: flex; flex-wrap: wrap; gap: 16px; margin: -6px 0 16px; color: var(--texto-3); font-size: .82rem; }
+.riesgos__leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+#segDias { height: 40px; }
+@media (max-width: 1180px) { .riesgos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 820px) { .riesgos { grid-template-columns: 1fr; } }
+
+/* ---------- [OWASP A07] Aviso de inactividad ---------- */
+.aviso-inactividad {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 120;
+  display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 12px;
+  background: #fff; color: var(--texto); border: 1px solid var(--borde);
+  box-shadow: 0 18px 40px -12px rgba(0,0,0,.35); font-size: .92rem; max-width: calc(100vw - 32px);
+}
+.aviso-inactividad .boton { white-space: nowrap; }
+
+/* ---------- [OWASP A09] Alertas de seguridad ---------- */
+.menu__alerta {
+  margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px;
+  background: #dc2626; color: #fff; font-size: .72rem; font-weight: 700; text-align: center; line-height: 1.5;
+}
+.alertas-seg {
+  margin-bottom: 18px; padding: 16px 18px; border-radius: 14px;
+  background: #fef2f2; border: 1px solid #fecaca;
+}
+.alertas-seg h2 { font-size: 1rem; color: #b91c1c; margin: 0 0 10px; }
+.alerta-seg {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 0; border-top: 1px solid #fde2e2;
+}
+.alerta-seg strong { display: block; font-size: .9rem; color: #7f1d1d; font-weight: 600; }
+.alerta-seg small { color: #9a5b5b; font-size: .78rem; }
+.alerta-seg .boton { white-space: nowrap; }

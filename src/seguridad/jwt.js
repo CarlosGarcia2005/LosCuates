@@ -2,13 +2,20 @@
 //  Tokens JWT en cookies httpOnly
 //
 //  rs_mfa   → token temporal (5 min) entre la contraseña y el código MFA
-//  rs_token → token de acceso (2 h) que se emite solo después del MFA
+//  rs_token → token de acceso que se emite solo después del MFA
+//
+//  [OWASP A07] Sesión con dos límites:
+//    - 15 min de INACTIVIDAD: el token vence a los 15 min y se renueva
+//      solo mientras el usuario sigue usando el sistema.
+//    - 8 h MÁXIMO: aunque se use todo el día, a las 8 h se pide login otra vez.
 // =====================================================================
 const jwt = require('jsonwebtoken');
 
 const COOKIE_ACCESO = 'rs_token';
 const COOKIE_MFA = 'rs_mfa';
-const DURACION_ACCESO_SEG = 2 * 60 * 60;
+const INACTIVIDAD_SEG = 15 * 60;
+const SESION_MAXIMA_SEG = 8 * 60 * 60;
+const RENOVAR_DESPUES_SEG = 60;          // no renovar en cada clic, como mucho una vez por minuto
 const DURACION_MFA_SEG = 5 * 60;
 const EMISOR = 'rancho-seco';
 
@@ -47,13 +54,29 @@ function verificar(token, tipoEsperado) {
   }
 }
 
-function emitirAcceso(res, usuario) {
-  const token = firmar({ sub: String(usuario.id), ver: usuario.tokenVersion }, 'acceso', DURACION_ACCESO_SEG);
-  res.cookie(COOKIE_ACCESO, token, opcionesCookie(DURACION_ACCESO_SEG));
+const ahoraSeg = () => Math.floor(Date.now() / 1000);
+
+/**
+ * Emite (o renueva) el token de acceso.
+ * @param {number} [inicio] segundo en que empezó la sesión (se conserva al renovar)
+ */
+function emitirAcceso(res, usuario, inicio = ahoraSeg()) {
+  const restante = inicio + SESION_MAXIMA_SEG - ahoraSeg();
+  const vida = Math.max(1, Math.min(INACTIVIDAD_SEG, restante));
+  const token = firmar({ sub: String(usuario.id), ver: usuario.tokenVersion, ini: inicio }, 'acceso', vida);
+  res.cookie(COOKIE_ACCESO, token, opcionesCookie(Math.max(1, restante)));
 }
 
-function emitirMfa(res, usuario, modo) {
-  const token = firmar({ sub: String(usuario.id), ver: usuario.tokenVersion, modo }, 'mfa', DURACION_MFA_SEG);
+/** ¿La sesión ya pasó del máximo de 8 horas? */
+const sesionAgotada = (datos) => Number.isFinite(datos.ini) && ahoraSeg() - datos.ini >= SESION_MAXIMA_SEG;
+
+/** Renueva el token si ya tiene más de un minuto (ventana deslizante de inactividad). */
+function renovarSiHaceFalta(res, usuario, datos) {
+  if (ahoraSeg() - datos.iat >= RENOVAR_DESPUES_SEG) emitirAcceso(res, usuario, Number.isFinite(datos.ini) ? datos.ini : datos.iat);
+}
+
+function emitirMfa(res, usuario, modo, extra = {}) {
+  const token = firmar({ sub: String(usuario.id), ver: usuario.tokenVersion, modo, ...extra }, 'mfa', DURACION_MFA_SEG);
   res.cookie(COOKIE_MFA, token, opcionesCookie(DURACION_MFA_SEG, '/api/auth'));
 }
 
@@ -82,6 +105,6 @@ function leerCookies(req) {
 }
 
 module.exports = {
-  COOKIE_ACCESO, COOKIE_MFA, secreto,
-  verificar, emitirAcceso, emitirMfa, borrarCookies, borrarCookieMfa, leerCookies
+  COOKIE_ACCESO, COOKIE_MFA, INACTIVIDAD_SEG, SESION_MAXIMA_SEG, secreto,
+  verificar, emitirAcceso, renovarSiHaceFalta, sesionAgotada, emitirMfa, borrarCookies, borrarCookieMfa, leerCookies
 };

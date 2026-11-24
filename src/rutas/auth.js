@@ -5,6 +5,7 @@
 //  Solo después del paso 2 se entrega el JWT de acceso.
 // =====================================================================
 const express = require('express');
+const { funcionesDe } = require('../funciones');
 const QRCode = require('qrcode');
 
 const { consulta } = require('../../config/db');
@@ -17,7 +18,8 @@ const { crearLimitador } = require('../seguridad/limitador');
 const usuarios = require('../usuarios');
 const bitacora = require('../bitacora');
 const { requiereSesion, contexto } = require('../autenticacion');
-const { ErrorApp, errorValidacion, asincrono } = require('../errores');
+const { soloCampos } = require('../seguridad/campos');
+const { ErrorApp, errorValidacion, validacionEvadida, asincrono } = require('../errores');
 
 const router = express.Router();
 
@@ -26,13 +28,22 @@ const MAX_INTENTOS = 5;
 const MINUTOS_BLOQUEO = 15;
 const MENSAJE_CREDENCIALES = 'Usuario o contraseña incorrectos.';
 
+/** [A07] Muchos intentos desde la misma IP (aunque sean a cuentas distintas) = fuerza bruta. */
+const registrarFuerzaBruta = (que) => (req, { maximo, minutos }) => bitacora.registrar(req, {
+  accion: 'FUERZA_BRUTA', modulo: 'Seguridad', resultado: 'Fallo',
+  descripcion: `[A07] Posible ataque de fuerza bruta: esta IP pasó de ${maximo} intentos de ${que} en ${minutos} minutos. ` +
+    `Se bloqueó la IP ${minutos} minutos.`
+});
+
 const limitadorLogin = crearLimitador({
   ventanaMs: 15 * 60 * 1000, maximo: 20,
-  mensaje: 'Demasiados intentos de inicio de sesión desde este equipo. Espera 15 minutos.'
+  mensaje: 'Demasiados intentos de inicio de sesión desde este equipo. Espera 15 minutos.',
+  alExceder: registrarFuerzaBruta('inicio de sesión')
 });
 const limitadorMfa = crearLimitador({
   ventanaMs: 5 * 60 * 1000, maximo: 15,
-  mensaje: 'Demasiados intentos con el código. Espera unos minutos.'
+  mensaje: 'Demasiados intentos con el código. Espera unos minutos.',
+  alExceder: registrarFuerzaBruta('código MFA')
 });
 
 const actorDe = (u) => usuarios.actor(u);
@@ -40,6 +51,7 @@ const textoMinutos = (seg) => Math.max(1, Math.ceil(seg / 60));
 
 /** Suma un intento fallido y bloquea la cuenta al llegar al máximo. */
 async function intentoFallido(req, u, motivo, accion) {
+  // Las dos actualizaciones no devuelven filas: el único resultado es el SELECT final
   const filas = await consulta(`
       UPDATE Usuario SET Intentos_Fallidos = Intentos_Fallidos + 1 WHERE idUsuario = @id;
       UPDATE Usuario
@@ -75,10 +87,10 @@ function mensajeBloqueo(segundos) {
 /* ------------------------------------------------------------------ */
 /*  PASO 1: correo y contraseña                                        */
 /* ------------------------------------------------------------------ */
-router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación', 'Usuario'),
+router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación', 'Usuario'), soloCampos(['correo', 'contrasena']),
   asincrono(async (req, res) => {
     const v = V.validarLogin(req.body);
-    if (!v.ok) throw errorValidacion(v.errores);
+    if (!v.ok) throw validacionEvadida(v.errores);
     const { correo, contrasena } = v.datos;
 
     const u = await usuarios.porCorreo(correo);
@@ -126,6 +138,9 @@ router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación'
 
     await consulta('UPDATE Usuario SET Intentos_Fallidos = 0 WHERE idUsuario = @id', { id: u.idUsuario });
 
+    // [A07] La contraseña es correcta, pero ¿cumple las reglas actuales? (cuentas viejas o de prueba)
+    const extraMfa = V.validarNuevaContrasena({ nueva: contrasena, confirmar: contrasena }).ok ? {} : { debil: 1 };
+
     // Primera vez: hay que configurar el Authenticator
     if (!u.MFA_Activo) {
       const secreto = totp.generarSecreto();
@@ -136,7 +151,7 @@ router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación'
         width: 220, margin: 1, errorCorrectionLevel: 'M'
       });
 
-      jwt.emitirMfa(res, actorDe(u), 'configurar');
+      jwt.emitirMfa(res, actorDe(u), 'configurar', extraMfa);
       await bitacora.registrar(req, {
         accion: 'LOGIN_PASO_1', modulo: 'Autenticación', tabla: 'Usuario', idRegistro: u.idUsuario, actor: actorDe(u),
         descripcion: 'Contraseña correcta. Se generó un código QR para configurar MFA por primera vez'
@@ -144,7 +159,7 @@ router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación'
       return res.json({ paso: 'configurar', qr, secreto: secreto.match(/.{1,4}/g).join(' '), cuenta: u.Correo });
     }
 
-    jwt.emitirMfa(res, actorDe(u), 'verificar');
+    jwt.emitirMfa(res, actorDe(u), 'verificar', extraMfa);
     await bitacora.registrar(req, {
       accion: 'LOGIN_PASO_1', modulo: 'Autenticación', tabla: 'Usuario', idRegistro: u.idUsuario, actor: actorDe(u),
       descripcion: 'Contraseña correcta. Falta el código MFA'
@@ -155,13 +170,13 @@ router.post('/login', limitadorLogin, contexto('LOGIN_FALLIDO', 'Autenticación'
 /* ------------------------------------------------------------------ */
 /*  PASO 2: código MFA                                                 */
 /* ------------------------------------------------------------------ */
-router.post('/mfa', limitadorMfa, contexto('MFA_FALLIDO', 'Autenticación', 'Usuario'),
+router.post('/mfa', limitadorMfa, contexto('MFA_FALLIDO', 'Autenticación', 'Usuario'), soloCampos(['codigo']),
   asincrono(async (req, res) => {
     const temporal = jwt.verificar(jwt.leerCookies(req)[jwt.COOKIE_MFA], 'mfa');
     if (!temporal) throw new ErrorApp(401, 'El tiempo para escribir el código terminó. Vuelve a iniciar sesión.');
 
     const v = V.validarCodigo(req.body);
-    if (!v.ok) throw errorValidacion(v.errores);
+    if (!v.ok) throw validacionEvadida(v.errores);
 
     const u = await usuarios.porId(Number(temporal.sub));
     if (!u || u.Estado !== 'Activo' || Number(u.Token_Version) !== temporal.ver || !u.MFA_Secreto) {
@@ -199,16 +214,26 @@ router.post('/mfa', limitadorMfa, contexto('MFA_FALLIDO', 'Autenticación', 'Usu
       descripcion: `Inicio de sesión completo (contraseña + MFA) como ${u.Rol}`
     });
 
+    if (temporal.debil) {
+      await bitacora.registrar(req, {
+        accion: 'CONTRASENA_DEBIL', modulo: 'Seguridad', tabla: 'Usuario', idRegistro: u.idUsuario, actor: actorDe(u),
+        resultado: 'Fallo',
+        descripcion: '[A07] Inició sesión con una contraseña que ya no cumple las reglas (corta, común o sin números). Se le pidió cambiarla.'
+      });
+    }
+
     res.json({
       destino: u.Nivel_Acceso === 'Administrador' ? '/admin' : '/perfil',
-      usuario: { nombre: `${u.Nombre} ${u.Apellido_Paterno}`, rol: u.Rol }
+      usuario: { nombre: `${u.Nombre} ${u.Apellido_Paterno}`, rol: u.Rol },
+      avisoContrasena: Boolean(temporal.debil)
     });
   }));
 
 /* ------------------------------------------------------------------ */
+// También sirve para renovar la sesión mientras el usuario está activo (A07)
 router.get('/sesion', requiereSesion, (req, res) => {
   const { id, nombre, correo, rol, nivel } = req.usuario;
-  res.json({ usuario: { id, nombre, correo, rol, nivel } });
+  res.json({ usuario: { id, nombre, correo, rol, nivel, funciones: funcionesDe(rol) }, inactividadSeg: jwt.INACTIVIDAD_SEG });
 });
 
 router.post('/logout', asincrono(async (req, res) => {
@@ -218,9 +243,13 @@ router.post('/logout', asincrono(async (req, res) => {
     if (u && Number(u.Token_Version) === datos.ver) {
       // Subir la versión invalida este y cualquier otro token emitido antes
       await consulta('UPDATE Usuario SET Token_Version = Token_Version + 1 WHERE idUsuario = @id', { id: u.idUsuario });
+      const porInactividad = req.body && req.body.motivo === 'inactividad';
       await bitacora.registrar(req, {
-        accion: 'LOGOUT', modulo: 'Autenticación', tabla: 'Usuario', idRegistro: u.idUsuario,
-        actor: actorDe(u), descripcion: 'Cerró sesión'
+        accion: porInactividad ? 'SESION_INACTIVA' : 'LOGOUT', modulo: 'Autenticación', tabla: 'Usuario', idRegistro: u.idUsuario,
+        actor: actorDe(u),
+        descripcion: porInactividad
+          ? `[A07] La página cerró la sesión automáticamente tras ${jwt.INACTIVIDAD_SEG / 60} minutos sin actividad`
+          : 'Cerró sesión'
       });
     }
   }

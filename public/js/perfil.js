@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const { api, h, aviso, mostrarErrores, limpiarErrores, limpiarAlEscribir, datosFormulario, ocupado,
-    fechaHora, iniciales, cerrarSesion, soloDigitos } = window.App;
+    fechaHora, iniciales, cerrarSesion, soloDigitos, soloNumeros, ojoContrasena } = window.App;
   const V = window.Validacion;
   const $ = (id) => document.getElementById(id);
 
@@ -17,20 +17,29 @@
   [formPerfil, formClave, formMfa].forEach(limpiarAlEscribir);
   soloDigitos($('mCodigo'));
   soloDigitos($('sCodigo'));
+  soloNumeros($('pTel'), 10);
+  ['sActual', 'sNueva', 'sConfirmar'].forEach((id) => ojoContrasena($(id)));
 
-  document.querySelectorAll('dialog').forEach((d) => d.addEventListener('click', (e) => {
-    if (e.target === d || e.target.closest('[data-cerrar]')) d.close();
-  }));
+  window.UI.dialogos();
 
   /* ---------- Secciones ---------- */
+  /** Secciones extra según el rol: Árbitro → Mis partidos; Personal de limpieza → Limpieza */
+  const EXTRAS = { arbitro: ['mis-partidos', 'enlaceMisPartidos', () => window.MisPartidos && window.MisPartidos.cargar()],
+    limpieza: ['limpieza', 'enlaceLimpieza', () => window.Limpieza && window.Limpieza.cargar()] };
+  const funciones = () => (perfil && perfil.funciones) || [];
+
   function mostrarSeccion() {
     const nombre = (location.hash || '#perfil').slice(1);
-    const valida = ['perfil', 'editar', 'seguridad'].includes(nombre) ? nombre : 'perfil';
+    const extras = funciones().map((f) => EXTRAS[f]).filter(Boolean);
+    const validas = ['perfil', 'editar', 'seguridad', ...extras.map((x) => x[0])];
+    const valida = validas.includes(nombre) ? nombre : 'perfil';
     document.querySelectorAll('main section[data-seccion]').forEach((s) => { s.hidden = s.dataset.seccion !== valida; });
     document.querySelectorAll('.menu a[data-seccion]').forEach((a) => {
       if (a.dataset.seccion === valida) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     if (valida === 'editar') llenarFormulario();
+    const extra = extras.find((x) => x[0] === valida);
+    if (extra) extra[2]();
   }
 
   /* ---------- Mostrar datos ---------- */
@@ -61,6 +70,7 @@
       dato('Último acceso', fechaHora(u.ultimoAcceso)));
 
     $('enlaceAdmin').hidden = u.nivel !== 'Administrador';
+    for (const [clave, [, enlace]] of Object.entries(EXTRAS)) $(enlace).hidden = !funciones().includes(clave);
   }
 
   function llenarFormulario() {
@@ -70,7 +80,7 @@
     el.nombre.value = perfil.nombre || '';
     el.apellidoPaterno.value = perfil.apellidoPaterno || '';
     el.apellidoMaterno.value = perfil.apellidoMaterno || '';
-    el.telefono.value = perfil.telefono || '';
+    el.telefono.value = String(perfil.telefono || '').replace(/\D/g, '').slice(0, 10);
     el.correo.value = perfil.correo || '';
     el.idGenero.value = perfil.idGenero;
     $('pRol').value = perfil.rol;
@@ -84,6 +94,8 @@
     $('pGenero').replaceChildren(...r.datos.generos.map((g) => h('option', { value: g.id }, g.nombre)));
     pintarPerfil();
     mostrarSeccion();
+    // Insignia de partidos por responder aunque no esté abierta la sección
+    if (funciones().includes('arbitro') && location.hash !== '#mis-partidos' && window.MisPartidos) window.MisPartidos.cargar();
   }
 
   /* ---------- Editar información (con MFA) ---------- */
@@ -94,20 +106,43 @@
     const v = V.validarPerfil({ ...datos, codigo: '000000' });
     if (!v.ok) return mostrarErrores(formPerfil, v.errores, 'Revisa los campos marcados.');
     limpiarErrores(formPerfil);
-    pendiente = v.datos;
+    pedirCodigo({ tipo: 'perfil', datos: v.datos }, 'Confirmar y guardar');
+  });
+
+  function pedirCodigo(accion, textoBoton) {
+    pendiente = accion;
     formMfa.reset();
     limpiarErrores(formMfa);
+    formMfa.querySelector('[type=submit]').textContent = textoBoton;
     $('dlgMfa').showModal();
     $('mCodigo').focus();
-  });
+  }
+
+  /* ---------- [OWASP A07] Cerrar sesión en los demás equipos ---------- */
+  $('btnCerrarSesiones').addEventListener('click', () => pedirCodigo({ tipo: 'sesiones' }, 'Cerrar sesiones'));
+
+  async function cerrarOtrasSesiones(codigo) {
+    const boton = formMfa.querySelector('[type=submit]');
+    ocupado(boton, true, 'Cerrando…');
+    const r = await api('POST', '/api/perfil/cerrar-sesiones', { codigo });
+    ocupado(boton, false);
+    if (!r.ok) {
+      $('mCodigo').value = '';
+      return mostrarErrores(formMfa, r.datos.errores || {}, r.datos.mensaje);
+    }
+    $('dlgMfa').close();
+    aviso(r.datos.mensaje);
+  }
 
   formMfa.addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = V.validarCodigo({ codigo: $('mCodigo').value });
     if (!v.ok) return mostrarErrores(formMfa, v.errores);
+    if (!pendiente) return;
+    if (pendiente.tipo === 'sesiones') return cerrarOtrasSesiones(v.datos.codigo);
     const boton = formMfa.querySelector('[type=submit]');
     ocupado(boton, true, 'Guardando…');
-    const r = await api('PUT', '/api/perfil', { ...pendiente, codigo: v.datos.codigo });
+    const r = await api('PUT', '/api/perfil', { ...pendiente.datos, codigo: v.datos.codigo });
     ocupado(boton, false);
 
     if (!r.ok) {

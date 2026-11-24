@@ -1,17 +1,14 @@
-﻿-- =====================================================================
+-- =====================================================================
 --  Gestor Deportivo Rancho Seco  (SQL Server)
 --  02 - Seguridad, MFA y Bitácora
 -- ---------------------------------------------------------------------
---  * Abre este archivo en SSMS, elige la base GestorDeportivoRanchoSeco
---    y ejecútalo completo con F5 (sin seleccionar texto).
+--  * Abre este archivo en SSMS, elige la base del proyecto (en Azure:
+--    clic derecho en la base → Nueva consulta) y ejecútalo completo con F5.
 --  * Ejecútalo con una cuenta que pueda modificar tablas
 --    (Autenticación de Windows o sa), NO con rancho_app.
 --  * Se puede ejecutar más de una vez sin romper nada.
 --  * NO borra datos: solo agrega columnas, una tabla y triggers.
 -- =====================================================================
-USE GestorDeportivoRanchoSeco;
-GO
-
 SET NOCOUNT ON;
 GO
 

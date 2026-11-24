@@ -16,16 +16,34 @@ const { crearLimitador } = require('../seguridad/limitador');
 const usuarios = require('../usuarios');
 const bitacora = require('../bitacora');
 const { contexto } = require('../autenticacion');
-const { ErrorApp, errorValidacion, asincrono } = require('../errores');
+const { soloCampos } = require('../seguridad/campos');
+const { expulsar } = require('../seguridad/expulsion');
+const { ErrorApp, errorValidacion, validacionEvadida, asincrono } = require('../errores');
 
 const router = express.Router();
 
 const limitadorCambios = crearLimitador({
-  ventanaMs: 10 * 60 * 1000, maximo: 15, mensaje: 'Demasiados intentos. Espera unos minutos.'
+  ventanaMs: 10 * 60 * 1000, maximo: 15, mensaje: 'Demasiados intentos. Espera unos minutos.',
+  alExceder: (req, { maximo, minutos }) => bitacora.registrar(req, {
+    accion: 'FUERZA_BRUTA', modulo: 'Seguridad', resultado: 'Fallo',
+    descripcion: `[A07] Más de ${maximo} intentos de cambiar datos o contraseña en ${minutos} minutos (posible adivinanza del código MFA).`
+  })
 });
 
 // Campos que un usuario normal nunca puede mandar
-const CAMPOS_ADMINISTRATIVOS = ['idRol', 'rol', 'estado', 'nivel', 'Nivel_Acceso', 'idUsuario', 'mfaActivo', 'Token_Version'];
+const CAMPOS_ADMINISTRATIVOS = ['idRol', 'rol', 'estado', 'nivel', 'Nivel_Acceso', 'idUsuario', 'mfaActivo', 'Token_Version',
+  'Estado', 'Rol', 'MFA_Activo', 'MFA_Secreto', 'Contrasena', 'Contraseña', 'Intentos_Fallidos', 'Bloqueado_Hasta'];
+
+/** [A01] Si en el JSON vienen campos de permisos, no se discute: se expulsa. */
+async function expulsarSiEsAdministrativo(req, res, sobrantes) {
+  const administrativos = sobrantes.filter((c) => CAMPOS_ADMINISTRATIVOS.includes(c));
+  if (!administrativos.length) return false;
+  await expulsar(req, res, {
+    motivo: `Intentó cambiar sus propios permisos desde el perfil enviando ${administrativos.join(', ')}`,
+    datos: { camposAdministrativos: administrativos }
+  });
+  return true;
+}
 
 /** Verifica el código MFA y marca ese código como usado. */
 async function confirmarMfa(req, u, codigo, accion) {
@@ -45,21 +63,13 @@ router.get('/', asincrono(async (req, res) => {
   res.json({ usuario: usuarios.vista(req.usuarioCompleto), generos });
 }));
 
-router.put('/', limitadorCambios, contexto('PERFIL_EDITADO', 'Perfil', 'Usuario'), asincrono(async (req, res) => {
+router.put('/', limitadorCambios, contexto('PERFIL_EDITADO', 'Perfil', 'Usuario'),
+  soloCampos(['nombre', 'apellidoPaterno', 'apellidoMaterno', 'telefono', 'correo', 'idGenero', 'codigo'], expulsarSiEsAdministrativo),
+  asincrono(async (req, res) => {
   const u = req.usuarioCompleto;
 
-  const prohibidos = CAMPOS_ADMINISTRATIVOS.filter((c) => Object.prototype.hasOwnProperty.call(req.body || {}, c));
-  if (prohibidos.length) {
-    await bitacora.registrar(req, {
-      accion: 'ACCESO_DENEGADO', modulo: 'Perfil', tabla: 'Usuario', idRegistro: u.idUsuario,
-      descripcion: `Intentó modificar campos administrativos desde su perfil: ${prohibidos.join(', ')}`,
-      despues: { camposEnviados: prohibidos }, resultado: 'Fallo'
-    });
-    throw new ErrorApp(403, 'No tienes permiso para modificar el rol, el estado ni los permisos de tu cuenta.');
-  }
-
   const v = V.validarPerfil(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
   const d = v.datos;
 
   await confirmarMfa(req, u, d.codigo, 'PERFIL_EDITADO');
@@ -86,10 +96,11 @@ router.put('/', limitadorCambios, contexto('PERFIL_EDITADO', 'Perfil', 'Usuario'
 }));
 
 router.put('/contrasena', limitadorCambios, contexto('CONTRASENA_CAMBIADA', 'Perfil', 'Usuario'),
+  soloCampos(['actual', 'nueva', 'confirmar', 'codigo'], expulsarSiEsAdministrativo),
   asincrono(async (req, res) => {
     const u = req.usuarioCompleto;
     const v = V.validarCambioContrasena(req.body);
-    if (!v.ok) throw errorValidacion(v.errores);
+    if (!v.ok) throw validacionEvadida(v.errores);
 
     const { valida } = await contrasenas.verificar(v.datos.actual, u.Contrasena);
     if (!valida) {
@@ -106,13 +117,33 @@ router.put('/contrasena', limitadorCambios, contexto('CONTRASENA_CAMBIADA', 'Per
       { id: u.idUsuario, hash: await contrasenas.hashear(v.datos.nueva) });
 
     // Las demás sesiones se cierran; esta se renueva con la nueva versión
-    jwt.emitirAcceso(res, { ...req.usuario, tokenVersion: req.usuario.tokenVersion + 1 });
+    jwt.emitirAcceso(res, { ...req.usuario, tokenVersion: req.usuario.tokenVersion + 1 }, req.sesionInicio);
 
     await bitacora.registrar(req, {
       accion: 'CONTRASENA_CAMBIADA', modulo: 'Perfil', tabla: 'Usuario', idRegistro: u.idUsuario,
       descripcion: 'Cambió su contraseña (confirmado con MFA). Se cerraron sus otras sesiones.'
     });
     res.json({ mensaje: 'Contraseña actualizada.' });
+  }));
+
+/* [OWASP A07] Cerrar la sesión en todos los demás equipos (si el usuario
+   sospecha que alguien más entró con su cuenta). Se confirma con MFA. */
+router.post('/cerrar-sesiones', limitadorCambios, contexto('SESIONES_CERRADAS', 'Perfil', 'Usuario'),
+  soloCampos(['codigo'], expulsarSiEsAdministrativo),
+  asincrono(async (req, res) => {
+    const u = req.usuarioCompleto;
+    const v = V.validarCodigo(req.body);
+    if (!v.ok) throw validacionEvadida(v.errores);
+    await confirmarMfa(req, u, v.datos.codigo, 'SESIONES_CERRADAS');
+
+    await consulta('UPDATE Usuario SET Token_Version = Token_Version + 1 WHERE idUsuario = @id', { id: u.idUsuario });
+    jwt.emitirAcceso(res, { ...req.usuario, tokenVersion: req.usuario.tokenVersion + 1 }, req.sesionInicio);
+
+    await bitacora.registrar(req, {
+      accion: 'SESIONES_CERRADAS', modulo: 'Seguridad', tabla: 'Usuario', idRegistro: u.idUsuario,
+      descripcion: '[A07] Cerró su sesión en todos los demás equipos (confirmado con MFA). Solo sigue abierta la de este navegador.'
+    });
+    res.json({ mensaje: 'Listo. Se cerraron tus sesiones en los demás equipos.' });
   }));
 
 module.exports = router;

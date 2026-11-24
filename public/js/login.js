@@ -17,6 +17,20 @@
 
   document.getElementById('anio').textContent = new Date().getFullYear();
 
+  // [OWASP A01] Aviso cuando el servidor cerró la sesión por una manipulación
+  const motivo = new URLSearchParams(window.location.search).get('motivo');
+  const MOTIVOS = {
+    seguridad: 'Cerramos tu sesión porque detectamos una modificación no permitida ' +
+      '(datos o permisos alterados desde el navegador). Si fuiste tú, vuelve a iniciar sesión.',
+    // [OWASP A07]
+    inactividad: 'Cerramos tu sesión porque pasaron 15 minutos sin actividad. Vuelve a iniciar sesión.',
+    maximo: 'Tu sesión llegó al máximo de 8 horas. Por seguridad, vuelve a iniciar sesión.'
+  };
+  if (MOTIVOS[motivo]) {
+    mostrarErrores(formLogin, {}, MOTIVOS[motivo]);
+    window.history.replaceState(null, '', '/');
+  }
+
   // Si ya hay sesión, ir directo al panel
   api('GET', '/api/auth/sesion').then((r) => {
     if (r.ok && r.datos.usuario) {
@@ -24,11 +38,23 @@
     }
   });
 
+  // Ojo cerrado = contraseña oculta; ojo abierto = se ve el texto
+  const OJO_ABIERTO = [['path', { d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z' }], ['circle', { cx: '12', cy: '12', r: '3' }]];
+  const OJO_CERRADO = [['path', { d: 'M3 3l18 18' }],
+    ['path', { d: 'M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.5' }],
+    ['path', { d: 'M9.9 9.9a3 3 0 0 0 4.2 4.2' }]];
+  const pintarOjo = (visible) => {
+    const svg = window.App.svgIcono(visible ? OJO_ABIERTO : OJO_CERRADO);
+    svg.setAttribute('stroke-width', '1.8');
+    btnVer.replaceChildren(svg);
+    btnVer.classList.toggle('activo', visible);
+    btnVer.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  };
+  pintarOjo(false);
   btnVer.addEventListener('click', () => {
-    const visible = inputPass.type === 'text';
-    inputPass.type = visible ? 'password' : 'text';
-    btnVer.classList.toggle('activo', !visible);
-    btnVer.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+    const visible = inputPass.type === 'password';
+    inputPass.type = visible ? 'text' : 'password';
+    pintarOjo(visible);
   });
 
   limpiarAlEscribir(formLogin);
@@ -120,6 +146,13 @@
       return mostrarErrores(formMfa, r.datos.errores || {}, r.datos.mensaje);
     }
     textoBoton(btnMfa, '¡Listo! Entrando…', true);
+    if (r.datos.avisoContrasena) {
+      // [OWASP A07] Se muestra en la siguiente pantalla
+      try {
+        sessionStorage.setItem('rs_aviso', 'Tu contraseña ya no cumple las reglas de seguridad (es corta o muy común). ' +
+          'Cámbiala en Mi perfil → Seguridad.');
+      } catch { /* sin almacenamiento */ }
+    }
     window.location.href = r.datos.destino;
   });
 

@@ -2,11 +2,12 @@
 //  Consultas de usuarios que se reutilizan en varias rutas
 // =====================================================================
 const { consulta } = require('../config/db');
+const { funcionesDe } = require('./funciones');
 
 const SELECT_USUARIO = `
   SELECT u.idUsuario, u.idGenero, g.Genero, u.idRol, r.Rol, r.Nivel_Acceso,
          u.Nombre, u.Apellido_Paterno, u.Apellido_Materno, u.Telefono, u.Correo,
-         u.Contrasena, u.Estado, u.MFA_Secreto, u.MFA_Activo, u.MFA_Ultimo_Paso,
+         u.Contrasena AS Contrasena, u.Estado, u.MFA_Secreto, u.MFA_Activo, u.MFA_Ultimo_Paso,
          u.Intentos_Fallidos, u.Bloqueado_Hasta, u.Ultimo_Acceso, u.Token_Version,
          CASE WHEN u.Bloqueado_Hasta > GETDATE()
               THEN DATEDIFF(SECOND, GETDATE(), u.Bloqueado_Hasta) ELSE 0 END AS Segundos_Bloqueo
@@ -39,6 +40,7 @@ function vista(u) {
     idRol: u.idRol,
     rol: u.Rol,
     nivel: u.Nivel_Acceso,
+    funciones: funcionesDe(u.Rol),
     estado: u.Estado,
     mfaActivo: Boolean(u.MFA_Activo),
     ultimoAcceso: u.Ultimo_Acceso,

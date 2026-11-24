@@ -5,7 +5,7 @@
   'use strict';
   const {
     api, h, aviso, mostrarErrores, limpiarErrores, limpiarAlEscribir, datosFormulario, ocupado,
-    fechaHora, fecha, dinero, numero, iniciales, cerrarSesion
+    fechaHora, fecha, dinero, numero, iniciales, cerrarSesion, soloNumeros, ojoContrasena
   } = window.App;
   const V = window.Validacion;
 
@@ -52,6 +52,48 @@
     COMPROBANTE_SUBIDO: ['Comprobante subido', 'azul'],
     COMPROBANTE_CONSULTADO: ['Comprobante consultado', ''],
     RESERVAS_EXPORTADAS: ['Reservas exportadas', ''],
+    SESION_EXPULSADA: ['Sesión expulsada', 'rojo'],
+    TOKEN_MANIPULADO: ['Token alterado', 'rojo'],
+    TOKEN_REVOCADO: ['Token revocado reutilizado', 'ambar'],
+    SOLICITUD_MANIPULADA: ['JSON manipulado', 'rojo'],
+    INTENTO_INYECCION: ['Intento de inyección', 'rojo'],
+    VALIDACION_EVADIDA: ['Validación evadida', 'rojo'],
+    LIMITE_EXCEDIDO: ['Límite de peticiones', 'ambar'],
+    REGLA_NEGOCIO: ['Regla de negocio', 'ambar'],
+    METODO_NO_PERMITIDO: ['Método HTTP bloqueado', 'rojo'],
+    AUDITORIA_DEPENDENCIAS: ['Auditoría npm', 'azul'],
+    FUERZA_BRUTA: ['Fuerza bruta', 'rojo'],
+    CONTRASENA_DEBIL: ['Contraseña débil', 'ambar'],
+    SESION_INACTIVA: ['Sesión por inactividad', ''],
+    SESIONES_CERRADAS: ['Sesiones cerradas', 'azul'],
+    DATOS_MANIPULADOS: ['JSON envenenado', 'rojo'],
+    INTEGRIDAD_CODIGO: ['Código modificado', 'rojo'],
+    INTEGRIDAD_BITACORA: ['Bitácora alterada', 'rojo'],
+    INTEGRIDAD_REVISADA: ['Alteración revisada', 'azul'],
+    ALERTA_SEGURIDAD: ['Alerta', 'rojo'],
+    ALERTA_ATENDIDA: ['Alerta atendida', 'verde'],
+    INTENTO_SSRF: ['Intento de SSRF', 'rojo'],
+    EQUIPO_CREADO: ['Equipo registrado', 'verde'],
+    EQUIPO_EDITADO: ['Equipo editado', 'azul'],
+    EQUIPO_ELIMINADO: ['Equipo eliminado', 'rojo'],
+    TORNEO_CREADO: ['Torneo creado', 'verde'],
+    PARTIDO_PROGRAMADO: ['Partido programado', 'verde'],
+    PARTIDO_EDITADO: ['Partido editado', 'azul'],
+    PARTIDO_ELIMINADO: ['Partido eliminado', 'rojo'],
+    ARBITROS_ASIGNADOS: ['Árbitros asignados', 'verde'],
+    ARBITRO_REASIGNADO: ['Árbitro reasignado', 'ambar'],
+    ASIGNACION_ELIMINADA: ['Árbitros quitados', 'rojo'],
+    ASIGNACION_CONFIRMADA: ['Árbitro confirmó', 'verde'],
+    ASIGNACION_RECHAZADA: ['Árbitro rechazó', 'rojo'],
+    PAGO_DISCREPANCIA: ['Pago con discrepancia', 'rojo'],
+    PAGOS_EXPORTADOS: ['Pagos exportados', ''],
+    TAREA_CREADA: ['Tarea de limpieza', 'verde'],
+    TAREA_EDITADA: ['Tarea editada', 'azul'],
+    TAREA_ESTADO: ['Tarea actualizada', 'azul'],
+    TAREA_ELIMINADA: ['Tarea eliminada', 'rojo'],
+    REPORTE_CONDICION: ['Reporte de cancha', 'ambar'],
+    REPORTE_ATENDIDO: ['Reporte atendido', 'verde'],
+    REPORTE_EXPORTADO: ['Reporte exportado', ''],
     SISTEMA: ['Sistema', 'oscuro']
   };
   const etiquetaAccion = (codigo) => {
@@ -117,7 +159,10 @@
   // Otras secciones (canchas.js, reservas.js) se registran aquí y reutilizan las utilidades del panel
   window.Panel = {
     registrar(nombre, titulo, cargar) { CARGAR[nombre] = cargar; TITULOS[nombre] = titulo; },
-    confirmar, llenarSelect, fila, celda, filaVacia, ICONO_EDITAR, etiquetaAccion
+    confirmar, llenarSelect, fila, celda, filaVacia, ICONO_EDITAR, etiquetaAccion,
+    verDetalleBitacora: (id) => verDetalle(id),
+    /** Nombre corto y color de una acción de la bitácora (lo usa Reportes) */
+    nombreAccion: (codigo) => ACCIONES[codigo] || [String(codigo || '').replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase()), '']
   };
 
   function mostrarSeccion() {
@@ -238,6 +283,8 @@
 
   const formUsuario = $('formUsuario');
   limpiarAlEscribir(formUsuario);
+  soloNumeros($('uTel'), 10);                       // teléfono: solo números
+  ['uPass', 'uPass2', 'cNueva', 'cConfirmar'].forEach((id) => ojoContrasena($(id)));   // ojo para ver la contraseña
 
   function abrirNuevoUsuario() {
     estado.usuarioEditando = null;
@@ -268,7 +315,7 @@
     el.nombre.value = u.nombre || '';
     el.apellidoPaterno.value = u.apellidoPaterno || '';
     el.apellidoMaterno.value = u.apellidoMaterno || '';
-    el.telefono.value = u.telefono || '';
+    el.telefono.value = String(u.telefono || '').replace(/\D/g, '').slice(0, 10);
     el.correo.value = u.correo || '';
     el.idGenero.value = u.idGenero;
     el.idRol.value = u.idRol;

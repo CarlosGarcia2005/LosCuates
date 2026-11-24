@@ -39,19 +39,28 @@
     return v;
   }
 
+  // [OWASP A02/A07] Contraseñas demasiado comunes: son lo primero que prueba un atacante
+  const COMUNES = ['12345678', '123456789', '1234567890', '12345678a', 'a1234567', 'abc12345', 'abcd1234', 'qwerty123',
+    'password1', 'password123', 'contrasena1', 'contraseña1', 'admin123', 'admin1234', 'iloveyou1', 'welcome1',
+    '11111111a', 'futbol123', 'rancho123', 'ranchoseco1', 'mexico123', 'saltillo1', 'usuario1', 'qwertyui1'];
+
   function contrasena(valor, errores, campo = 'contrasena') {
     const v = typeof valor === 'string' ? valor : '';
     if (!v) errores[campo] = 'La contraseña es obligatoria.';
     else if (v.length < 8) errores[campo] = 'Debe tener al menos 8 caracteres.';
     else if (v.length > 72) errores[campo] = 'Máximo 72 caracteres.';
     else if (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(v) || !/\d/.test(v)) errores[campo] = 'Debe incluir letras y números.';
+    else if (COMUNES.includes(v.toLowerCase())) errores[campo] = 'Esa contraseña es demasiado común. Elige otra.';
+    else if (/^(.)\1+$/.test(v) || /(.)\1{5,}/.test(v)) errores[campo] = 'No uses el mismo carácter repetido tantas veces.';
     return v;
   }
 
+  /** Teléfono: solo números (sin espacios, guiones ni letras) y exactamente 10 dígitos. */
   function telefono(valor, errores) {
-    const v = texto(String(valor ?? '')).replace(/[\s-]/g, '');
+    const v = texto(String(valor ?? ''));
     if (!v) return null;
-    if (!TELEFONO.test(v)) errores.telefono = 'El teléfono debe tener exactamente 10 dígitos.';
+    if (!/^\d+$/.test(v)) errores.telefono = 'Solo se permiten números (sin espacios, guiones ni letras).';
+    else if (!TELEFONO.test(v)) errores.telefono = 'El teléfono debe tener exactamente 10 dígitos.';
     return v;
   }
 
@@ -256,11 +265,243 @@
     return resultado(e, { ...(pago || {}), descripcion: descripcionLibre(d.descripcion, e) });
   }
 
+  /**
+   * Enlace de un comprobante (formato básico). Las reglas anti-SSRF
+   * (solo https, sin direcciones internas...) las aplica el SERVIDOR:
+   * así un intento de SSRF siempre llega a él y queda registrado.
+   */
+  function validarEnlace(d = {}) {
+    const e = {};
+    const url = texto(d.url);
+    if (!url) e.url = 'Pega el enlace del comprobante.';
+    else if (url.length > 500) e.url = 'El enlace es demasiado largo (máximo 500 caracteres).';
+    else if (!/^[a-z][a-z0-9+.-]*:\/\/\S+$/i.test(url)) e.url = 'Escribe un enlace completo, por ejemplo https://sitio.com/comprobante.png';
+    return resultado(e, { url });
+  }
+
+  /* ---------------- Módulos deportivos ---------------- */
+  const NOMBRE_EQUIPO = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .'&-]+$/;
+  const NOMBRE_TORNEO = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 .,'#&()-]+$/;
+  const REFERENCIA = /^[A-Za-z0-9 #./_-]+$/;
+  const PUESTOS = ['Central', 'Lateral', 'Contralateral', 'Cuarto'];
+  const NOMBRES_PUESTO = {
+    Central: 'Árbitro Central', Lateral: 'Asistente Abanderado Lateral',
+    Contralateral: 'Asistente Abanderado Contralateral', Cuarto: 'Cuarto Árbitro'
+  };
+  /** "Fútbol 11" usa 4 árbitros; "Fútbol 7" (y fútbol rápido) solo el central. */
+  const esFutbol11 = (tipo) => /11/.test(String(tipo || ''));
+  const puestosDe = (tipo) => (esFutbol11(tipo) ? PUESTOS.slice() : ['Central']);
+  const DURACIONES = [60, 90, 120];
+  const ESTADOS_PAGO = ['Pagado', 'Pendiente', 'Validado', 'Con discrepancia'];
+  const TIPOS_TAREA = {
+    General: 'Limpieza general', Basura: 'Recolección de basura', Barrido: 'Barrido y retiro de hojas',
+    Gradas: 'Limpieza de gradas', Riego: 'Riego de cancha', Otro: 'Otra tarea'
+  };
+  const ESTADOS_TAREA = ['Pendiente', 'En progreso', 'Completada'];
+  const URGENCIAS = ['Baja', 'Media', 'Alta'];
+  const ESTADOS_REPORTE = ['Sin resolver', 'En proceso', 'Resuelto'];
+
+  const vacio = (v) => v === undefined || v === null || v === '';
+  const LIMPIAR_CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+
+  /** Texto libre: sin caracteres de control, espacios normalizados y con límites. */
+  function textoLibre(valor, campo, e, { min = 0, max = 255, obligatorio = false, etiqueta = 'Este campo' } = {}) {
+    const v = texto(String(valor ?? '').replace(LIMPIAR_CONTROL, ''));
+    if (!v) {
+      if (obligatorio) e[campo] = `${etiqueta} es obligatorio.`;
+      return null;
+    }
+    if (v.length < min) e[campo] = `Escribe al menos ${min} caracteres.`;
+    else if (v.length > max) e[campo] = `Máximo ${max} caracteres.`;
+    return v;
+  }
+
+  function validarEquipo(d = {}) {
+    const e = {};
+    const nombre = texto(d.nombre);
+    if (!nombre) e.nombre = 'El nombre del equipo es obligatorio.';
+    else if (nombre.length < 3 || nombre.length > 40) e.nombre = 'Debe tener entre 3 y 40 caracteres.';
+    else if (!NOMBRE_EQUIPO.test(nombre)) e.nombre = "Solo letras, números, espacios y los signos . ' & -";
+    const idUsuario = entero(d.idUsuario, 'idUsuario', e, 4294967295);
+    if (e.idUsuario) e.idUsuario = 'Selecciona al usuario responsable del equipo.';
+    return resultado(e, { nombre, idUsuario });
+  }
+
+  function validarTorneo(d = {}) {
+    const e = {};
+    const nombre = texto(d.nombre);
+    if (!nombre) e.nombre = 'El nombre del torneo es obligatorio.';
+    else if (nombre.length < 3 || nombre.length > 50) e.nombre = 'Debe tener entre 3 y 50 caracteres.';
+    else if (!NOMBRE_TORNEO.test(nombre)) e.nombre = 'Solo letras, números, espacios y signos básicos.';
+    const idTipo = entero(d.idTipo, 'idTipo', e);
+    if (e.idTipo) e.idTipo = 'Elige la modalidad.';
+    const fechaInicio = texto(d.fechaInicio), fechaFin = texto(d.fechaFin);
+    if (!fechaReal(fechaInicio)) e.fechaInicio = 'Elige una fecha válida.';
+    if (!fechaReal(fechaFin)) e.fechaFin = 'Elige una fecha válida.';
+    else if (!e.fechaInicio && fechaFin < fechaInicio) e.fechaFin = 'Debe ser igual o posterior a la fecha de inicio.';
+    const crudo = String(d.costo ?? '').replace(/[\s,$]/g, '');
+    let costo = 0;
+    if (crudo !== '') {
+      if (!MONTO.test(crudo)) e.costo = 'Monto no válido (máximo 2 decimales).';
+      else if ((costo = Number(crudo)) > 100000) e.costo = 'El costo no puede ser mayor a $100,000.';
+    }
+    return resultado(e, { nombre, idTipo, fechaInicio, fechaFin, costo });
+  }
+
+  /**
+   * Partido nuevo (nuevo = true) o edición de uno existente.
+   * La duración es 60, 90 o 120 minutos y debe terminar antes del cierre.
+   */
+  function validarPartido(d = {}, { nuevo = true, ahora = new Date() } = {}) {
+    const e = {};
+    const datos = {};
+    if (nuevo) {
+      datos.idTorneo = entero(d.idTorneo, 'idTorneo', e, 4294967295);
+      if (e.idTorneo) e.idTorneo = 'Elige el torneo.';
+      datos.idLocal = entero(d.idLocal, 'idLocal', e, 4294967295);
+      if (e.idLocal) e.idLocal = 'Elige al equipo local.';
+      datos.idVisitante = entero(d.idVisitante, 'idVisitante', e, 4294967295);
+      if (e.idVisitante) e.idVisitante = 'Elige al equipo visitante.';
+      if (!e.idLocal && !e.idVisitante && datos.idLocal === datos.idVisitante) e.idVisitante = 'Un equipo no puede jugar contra sí mismo.';
+    }
+    const jornada = Number(d.jornada);
+    if (!Number.isInteger(jornada) || jornada < 1 || jornada > 99) e.jornada = 'Escribe la jornada (1 a 99).';
+    datos.jornada = jornada;
+    datos.idCancha = entero(d.idCancha, 'idCancha', e);
+    if (e.idCancha) e.idCancha = 'Elige la cancha.';
+
+    const fecha = texto(d.fecha);
+    const hoy = fechaLocal(ahora);
+    if (!fechaReal(fecha)) e.fecha = 'Elige una fecha válida.';
+    else if (fecha < hoy) e.fecha = 'La fecha ya pasó.';
+    datos.fecha = fecha;
+
+    const inicio = texto(d.horaInicio);
+    const duracion = Number(d.duracion);
+    datos.horaInicio = inicio;
+    datos.duracion = duracion;
+    if (!HORA.test(inicio)) e.horaInicio = 'Elige la hora de inicio.';
+    else if (!DURACIONES.includes(duracion)) e.duracion = 'Elige la duración.';
+    else {
+      const fin = aMinutos(inicio) + duracion;
+      if (aMinutos(inicio) < aMinutos(HORA_APERTURA) || fin > aMinutos(HORA_CIERRE)) {
+        e.horaInicio = `El partido debe jugarse entre ${HORA_APERTURA} y ${HORA_CIERRE}.`;
+      } else if (fecha === hoy && aMinutos(inicio) <= ahora.getHours() * 60 + ahora.getMinutes()) {
+        e.horaInicio = 'Esa hora ya pasó.';
+      }
+      datos.horaFin = `${dosDigitos(Math.floor(fin / 60))}:${dosDigitos(fin % 60)}`;
+    }
+    return resultado(e, datos);
+  }
+
+  /**
+   * Cuerpo arbitral { Central: id, Lateral: id, ... } para los puestos que pide la modalidad.
+   * completos = true exige todos los puestos. Un árbitro no puede ocupar dos puestos.
+   */
+  function validarArbitros(valor, puestos, { completos = true } = {}) {
+    const e = {};
+    const datos = {};
+    const obj = valor && typeof valor === 'object' && !Array.isArray(valor) ? valor : {};
+    for (const k of Object.keys(obj)) if (!PUESTOS.includes(k)) e.arbitros = 'Puesto de árbitro no válido.';
+    const usados = new Map();
+    for (const p of puestos) {
+      const campo = `arb${p}`;
+      if (vacio(obj[p])) {
+        if (completos) e[campo] = `Elige al ${NOMBRES_PUESTO[p].toLowerCase()}.`;
+        datos[p] = null;
+        continue;
+      }
+      const id = Number(obj[p]);
+      if (!Number.isInteger(id) || id < 1 || id > 4294967295) { e[campo] = 'Selecciona un árbitro válido.'; continue; }
+      if (usados.has(id)) e[campo] = `Ya es ${NOMBRES_PUESTO[usados.get(id)]} en este partido.`;
+      usados.set(id, p);
+      datos[p] = id;
+    }
+    for (const p of PUESTOS) if (!puestos.includes(p) && !vacio(obj[p])) e[`arb${p}`] = 'Esta modalidad no usa ese puesto.';
+    return resultado(e, datos);
+  }
+
+  /** Respuesta del árbitro: para rechazar debe explicar el motivo. */
+  function validarRechazo(d = {}) {
+    const e = {};
+    const motivo = textoLibre(d.motivo, 'motivo', e, { min: 5, max: 255, obligatorio: true, etiqueta: 'El motivo' });
+    return resultado(e, { motivo });
+  }
+
+  /** Pago de un partido de torneo (Pagos → Registrar pago). */
+  function validarPagoJuego(d = {}) {
+    const e = {};
+    const idTorneo = entero(d.idTorneo, 'idTorneo', e, 4294967295);
+    if (e.idTorneo) e.idTorneo = 'Selecciona un torneo.';
+    const idJuego = entero(d.idJuego, 'idJuego', e, 4294967295);
+    if (e.idJuego) e.idJuego = e.idTorneo ? 'Primero selecciona un torneo.' : 'Selecciona el juego.';
+    const pago = datosPago(d, e, true) || {};
+    const referencia = texto(d.referencia) || null;
+    if (referencia && (referencia.length > 60 || !REFERENCIA.test(referencia))) {
+      e.referencia = 'Solo letras, números y los signos - / # . (máximo 60).';
+    }
+    return resultado(e, { idTorneo, idJuego, monto: pago.monto, idMetodoPago: pago.idMetodoPago, referencia });
+  }
+
+  /** Motivo para marcar un pago con discrepancia. */
+  function validarNotaRevision(d = {}) {
+    const e = {};
+    const nota = textoLibre(d.nota, 'nota', e, { min: 5, max: 255, obligatorio: true, etiqueta: 'El motivo' });
+    return resultado(e, { nota });
+  }
+
+  function validarTarea(d = {}) {
+    const e = {};
+    const tipo = Object.prototype.hasOwnProperty.call(TIPOS_TAREA, d.tipo) ? d.tipo : (e.tipo = 'Elige el tipo de tarea.', null);
+    const tarea = textoLibre(d.tarea, 'tarea', e, { min: 3, max: 80, obligatorio: true, etiqueta: 'El nombre de la tarea' });
+    let idCancha = null, lugar = null;
+    if (!vacio(d.idCancha)) {
+      idCancha = entero(d.idCancha, 'idCancha', e);
+      if (e.idCancha) e.idCancha = 'Elige el lugar.';
+    } else {
+      lugar = textoLibre(d.lugar, 'lugar', e, { min: 3, max: 60, obligatorio: true, etiqueta: 'El lugar' });
+    }
+    const fecha = texto(d.fecha);
+    if (!fechaReal(fecha)) e.fecha = 'Elige una fecha válida.';
+    const hora = texto(d.hora);
+    if (!HORA.test(hora)) e.hora = 'Elige la hora.';
+    let idUsuarioAsignado = null;
+    if (!vacio(d.idUsuarioAsignado)) {
+      idUsuarioAsignado = entero(d.idUsuarioAsignado, 'idUsuarioAsignado', e, 4294967295);
+      if (e.idUsuarioAsignado) e.idUsuarioAsignado = 'Elige a una persona válida.';
+    }
+    const estado = ESTADOS_TAREA.includes(d.estado) ? d.estado : (e.estado = 'Elige el estado.', null);
+    const notas = textoLibre(d.notas, 'notas', e, { max: 255 });
+    return resultado(e, { tipo, tarea, idCancha, lugar, fecha, hora, idUsuarioAsignado, estado, notas });
+  }
+
+  /** Reporte de condición de una cancha (el tipo de problema se escribe libremente). */
+  function validarReporteCondicion(d = {}) {
+    const e = {};
+    const idCancha = entero(d.idCancha, 'idCancha', e);
+    if (e.idCancha) e.idCancha = 'Selecciona una cancha.';
+    const tipoProblema = textoLibre(d.tipoProblema, 'tipoProblema', e, { min: 3, max: 80, obligatorio: true, etiqueta: 'El tipo de problema' });
+    const descripcion = textoLibre(d.descripcion, 'descripcion', e, { min: 10, max: 500, obligatorio: true, etiqueta: 'La descripción' });
+    const urgencia = URGENCIAS.includes(d.urgencia) ? d.urgencia : (e.urgencia = 'Elige la urgencia.', null);
+    return resultado(e, { idCancha, tipoProblema, descripcion, urgencia });
+  }
+
+  function validarAtencionReporte(d = {}) {
+    const e = {};
+    const estado = ['En proceso', 'Resuelto'].includes(d.estado) ? d.estado : (e.estado = 'Elige el nuevo estado.', null);
+    const nota = textoLibre(d.nota, 'nota', e, { max: 255 });
+    return resultado(e, { estado, nota });
+  }
+
   return {
     NIVELES, ESTADOS,
     validarLogin, validarCodigo, validarPerfil, validarUsuarioAdmin,
     validarRol, validarNuevaContrasena, validarCambioContrasena,
     ESTADOS_CANCHA, HORA_APERTURA, HORA_CIERRE, horarios, fechaLocal,
-    validarCancha, validarReserva, validarPago
+    validarCancha, validarReserva, validarPago, validarEnlace,
+    PUESTOS, NOMBRES_PUESTO, DURACIONES, ESTADOS_PAGO, TIPOS_TAREA, ESTADOS_TAREA, URGENCIAS, ESTADOS_REPORTE,
+    esFutbol11, puestosDe, aMinutos, fechaReal,
+    validarEquipo, validarTorneo, validarPartido, validarArbitros, validarRechazo,
+    validarPagoJuego, validarNotaRevision, validarTarea, validarReporteCondicion, validarAtencionReporte
   };
 });

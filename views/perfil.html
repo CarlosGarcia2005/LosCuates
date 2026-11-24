@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/modulos.css">
 </head>
 <body>
 <div class="app">
@@ -33,6 +34,15 @@
       <a href="#seguridad" data-seccion="seguridad">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
         Seguridad
+      </a>
+      <a href="#mis-partidos" data-seccion="mis-partidos" id="enlaceMisPartidos" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13a6 6 0 1 0 11.4-2.6L21 8V5h-9.5A6 6 0 0 0 3 13z"/><circle cx="9" cy="13" r="1.6"/></svg>
+        Mis partidos
+        <span class="menu__alerta menu__alerta--ambar" id="menuMisPartidos" hidden aria-label="Partidos por responder">0</span>
+      </a>
+      <a href="#limpieza" data-seccion="limpieza" id="enlaceLimpieza" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 3 11 11"/><path d="M8.5 9.5 4 14c-1 1-1.5 3.5-1 6.5 3 .5 5.5 0 6.5-1l4.5-4.5z"/><path d="m6 18 2-2M9.5 18.5l2-2"/></svg>
+        Limpieza
       </a>
       <a href="/admin" id="enlaceAdmin" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -83,7 +93,7 @@
             <div class="campo"><label for="pNombre">Nombre *</label><input id="pNombre" name="nombre" maxlength="45" autocomplete="given-name"><small data-error="nombre"></small></div>
             <div class="campo"><label for="pApP">Apellido paterno *</label><input id="pApP" name="apellidoPaterno" maxlength="20" autocomplete="family-name"><small data-error="apellidoPaterno"></small></div>
             <div class="campo"><label for="pApM">Apellido materno <span class="opcional">(opcional)</span></label><input id="pApM" name="apellidoMaterno" maxlength="20"><small data-error="apellidoMaterno"></small></div>
-            <div class="campo"><label for="pTel">Teléfono <span class="opcional">(10 dígitos)</span></label><input id="pTel" name="telefono" inputmode="numeric" maxlength="12" autocomplete="tel"><small data-error="telefono"></small></div>
+            <div class="campo"><label for="pTel">Teléfono <span class="opcional">(10 dígitos)</span></label><input id="pTel" name="telefono" inputmode="numeric" pattern="[0-9]*" maxlength="10" autocomplete="tel" placeholder="Solo números, ej. 8441234567"><small data-error="telefono"></small></div>
             <div class="campo"><label for="pCorreo">Correo *</label><input id="pCorreo" name="correo" type="email" maxlength="50" autocomplete="email"><small data-error="correo"></small><span class="ayuda">Es el usuario con el que inicias sesión.</span></div>
             <div class="campo"><label for="pGenero">Género *</label><select id="pGenero" name="idGenero"></select><small data-error="idGenero"></small></div>
             <div class="campo"><label for="pRol">Rol</label><input id="pRol" disabled><span class="ayuda">Solo un administrador puede cambiarlo.</span></div>
@@ -99,7 +109,7 @@
 
     <!-- ===================== SEGURIDAD ===================== -->
     <section data-seccion="seguridad" hidden>
-      <header class="encabezado"><div><h1>Seguridad</h1><p>Cambia tu contraseña. También se confirma con tu código MFA.</p></div></header>
+      <header class="encabezado"><div><h1>Seguridad</h1><p>Cambia tu contraseña y controla tus sesiones. Todo se confirma con tu código MFA.</p></div></header>
       <div class="pila">
         <article class="tarjeta">
           <div class="tarjeta__cabeza"><div><h2>Verificación en dos pasos (MFA)</h2><p id="estadoMfa">Activa</p></div><span class="etiqueta etiqueta--verde">Protegida</span></div>
@@ -123,7 +133,90 @@
             </form>
           </div>
         </article>
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza">
+            <div><h2>Sesiones abiertas</h2><p>¿Dejaste tu cuenta abierta en otra computadora o crees que alguien más entró?</p></div>
+            <button class="boton boton--secundario" type="button" id="btnCerrarSesiones">Cerrar en los demás equipos</button>
+          </div>
+          <div class="tarjeta__cuerpo texto-tenue">Se cierra tu sesión en todos los navegadores excepto en este. También se cierra sola tras 15 minutos sin actividad y, como máximo, a las 8 horas.</div>
+        </article>
       </div>
+    </section>
+
+    <!-- ===================== MIS PARTIDOS (árbitros) ===================== -->
+    <section data-seccion="mis-partidos" id="seccion-mis-partidos" hidden>
+      <header class="encabezado">
+        <div><p class="kicker kicker--linea">Arbitraje</p><h1>Mis partidos</h1><p>Confirma o rechaza los partidos que te asignaron. El administrador ve tu respuesta al momento.</p></div>
+      </header>
+      <div class="pila">
+        <div class="stats-3" id="mpResumen"></div>
+        <div class="mis-partidos" id="mpProximos"></div>
+        <article class="tarjeta">
+          <div class="tarjeta__cabeza"><div><h2>Partidos anteriores</h2><p>Últimos 30 días</p></div></div>
+          <div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Partido</th><th>Torneo</th><th>Puesto</th><th>Respuesta</th></tr></thead><tbody id="mpAnteriores"></tbody></table></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================== LIMPIEZA ===================== -->
+    <section id="seccion-limpieza" data-seccion="limpieza" hidden>
+      <header class="encabezado encabezado--barra">
+        <div><p class="kicker">Operaciones</p><h1>Limpieza y reporte de condiciones de cancha</h1><p>Planifica la limpieza diaria y reporta el estado de las canchas</p></div>
+        <label class="chip-fecha chip-fecha--grande" title="Cambiar el día"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg><span id="lpFechaTexto">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><input type="date" id="lpFecha" aria-label="Día que quieres ver"></label>
+      </header>
+      <div class="lp-rejilla">
+        <div class="pila lp-columna">
+          <article class="tarjeta tarjeta-modulo">
+            <div class="tarjeta-modulo__cabeza">
+              <span class="tarjeta-modulo__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg></span>
+              <div><h2>Partidos del día</h2><p id="lpFechaLarga">—</p></div>
+              <span class="pastilla-verde empuja" id="lpConteo">0 partidos</span>
+            </div>
+            <div class="tabla-contenedor">
+              <table class="tabla-suave">
+                <thead><tr><th>Hora</th><th>Cancha</th><th>Competencia</th><th>Equipos</th></tr></thead>
+                <tbody id="lpPartidos"></tbody>
+              </table>
+            </div>
+            <p class="nota-linea lp-nota"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg><span>Planifica la limpieza con anticipación para garantizar canchas en óptimas condiciones.</span></p>
+          </article>
+          <article class="tarjeta tarjeta-modulo">
+            <div class="tarjeta-modulo__cabeza">
+              <span class="tarjeta-modulo__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 3 11 11"/><path d="M8.5 9.5 4 14c-1 1-1.5 3.5-1 6.5 3 .5 5.5 0 6.5-1l4.5-4.5z"/><path d="m6 18 2-2M9.5 18.5l2-2"/></svg></span>
+              <div><h2>Tareas de limpieza</h2><p id="lpTareasSub">Tareas programadas y pendientes para hoy.</p></div>
+              <button class="boton boton--primario boton--grande empuja" type="button" id="btnNuevaTarea"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva tarea</button>
+            </div>
+            <ul class="tareas" id="lpTareas"></ul>
+            <button class="ver-todas" type="button" id="btnVerTareas">Ver todas las tareas</button>
+          </article>
+        </div>
+        <div class="pila lp-columna">
+          <article class="tarjeta tarjeta-modulo">
+            <div class="tarjeta-modulo__cabeza">
+              <span class="tarjeta-modulo__icono"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg></span>
+              <div><h2>Reporte de condición</h2><p>Registra problemas o condiciones que requieren atención.</p></div>
+            </div>
+            <form id="formReporteLp" class="lp-form" novalidate>
+              <p class="form-error" hidden></p>
+              <div class="campo"><label for="lpCancha">Cancha</label><select id="lpCancha" name="idCancha"></select><small data-error="idCancha"></small></div>
+              <div class="campo"><label for="lpTipo">Tipo de problema</label><textarea id="lpTipo" name="tipoProblema" rows="2" maxlength="80" placeholder="Escribe el tipo de problema, por ejemplo: Drenaje obstruido"></textarea><small data-error="tipoProblema"></small></div>
+              <div class="campo"><label for="lpDescripcion">Descripción</label><textarea id="lpDescripcion" name="descripcion" rows="3" maxlength="500" placeholder="Describe el problema o condición observada..."></textarea><small data-error="descripcion"></small></div>
+              <fieldset class="campo">
+                <legend>Urgencia</legend>
+                <div class="urgencias">
+                  <label class="urgencia urgencia--baja"><input type="radio" name="urgencia" value="Baja"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>Baja</b><small>Puede esperar</small></span></span></label>
+                  <label class="urgencia urgencia--media"><input type="radio" name="urgencia" value="Media"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg><span><b>Media</b><small>Atención pronto</small></span></span></label>
+                  <label class="urgencia urgencia--alta"><input type="radio" name="urgencia" value="Alta" checked><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg><span><b>Alta</b><small>Inmediata</small></span></span></label>
+                </div>
+                <small data-error="urgencia"></small>
+              </fieldset>
+              <button class="boton boton--primario boton-bloque" type="submit" id="btnGuardarReporteLp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>Guardar reporte</button>
+            </form>
+          </article>
+          <div class="pila" id="lpAlerta"></div>
+        </div>
+      </div>
+      <div class="emergente menu-acciones" id="lpMenu" hidden role="menu"></div>
     </section>
   </main>
 </div>
@@ -150,8 +243,138 @@
   </div>
 </dialog>
 
+
+<!-- ===================== DIÁLOGO: RECHAZAR PARTIDO ===================== -->
+<dialog id="dlgRechazo" class="dialogo--chico" aria-labelledby="dlgRechazoTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgRechazoTitulo">Rechazar partido</h2><p id="dlgRechazoSub"></p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formRechazo" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <div class="campo campo--completo"><label for="rzMotivo">Motivo del rechazo</label><textarea id="rzMotivo" name="motivo" rows="3" maxlength="255" placeholder="Ej. Compromiso personal ineludible."></textarea><small data-error="motivo"></small></div>
+      <p class="ayuda campo--completo">El administrador verá tu motivo para asignar a otro árbitro.</p>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--peligro" type="submit">Rechazar partido</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===================== LIMPIEZA: NUEVA / EDITAR TAREA ===================== -->
+<dialog id="dlgTareaLp" class="panel" aria-labelledby="dlgTareaLpTitulo">
+  <form id="formTareaLp" class="panel__form" novalidate>
+    <header class="panel__cabeza">
+      <div><p class="kicker" id="dlgTareaLpKicker">Nueva tarea</p><h2 id="dlgTareaLpTitulo">Nueva tarea de limpieza</h2><p>Programa una tarea para una cancha o un área del deportivo.</p></div>
+      <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+    </header>
+    <div class="panel__cuerpo">
+      <p class="form-error" hidden></p>
+      <div class="campo"><label for="tlTipo">Tipo de tarea <span class="req">*</span></label><select id="tlTipo" name="tipo"></select><small data-error="tipo"></small></div>
+      <div class="campo"><label for="tlTarea">Nombre de la tarea <span class="req">*</span></label><input id="tlTarea" name="tarea" maxlength="80" autocomplete="off" placeholder="Ej. Limpieza general de cancha"><div class="campo__pie"><small data-error="tarea"></small><span class="contador" id="tlContador">0/80</span></div></div>
+      <div class="campo"><label for="tlCancha">Lugar <span class="req">*</span></label><select id="tlCancha" name="idCancha"></select><small data-error="idCancha"></small></div>
+      <div class="campo" id="tlLugarCampo" hidden><label for="tlLugar">¿Qué lugar? <span class="req">*</span></label><input id="tlLugar" name="lugar" maxlength="60" autocomplete="off" placeholder="Ej. Áreas comunes, Gradas norte, Baños"><small data-error="lugar"></small></div>
+      <div class="rejilla-campos">
+        <div class="campo"><label for="tlFecha">Fecha <span class="req">*</span></label><input id="tlFecha" name="fecha" type="date"><small data-error="fecha"></small></div>
+        <div class="campo"><label for="tlHora">Hora <span class="req">*</span></label><input id="tlHora" name="hora" type="time" step="300"><small data-error="hora"></small></div>
+      </div>
+      <div class="campo"><label for="tlResponsable">Responsable <span class="opcional">(opcional)</span></label><select id="tlResponsable" name="idUsuarioAsignado"></select><small data-error="idUsuarioAsignado"></small><span class="ayuda">Personal con el rol "Personal de limpieza".</span></div>
+      <fieldset class="campo">
+        <legend>Estado</legend>
+        <div class="segmentos segmentos--3">
+          <label class="segmento"><input type="radio" name="estado" value="Pendiente" checked><span>Pendiente</span></label>
+          <label class="segmento"><input type="radio" name="estado" value="En progreso"><span>En progreso</span></label>
+          <label class="segmento"><input type="radio" name="estado" value="Completada"><span>Completada</span></label>
+        </div>
+        <small data-error="estado"></small>
+      </fieldset>
+      <div class="campo"><label for="tlNotas">Notas <span class="opcional">(opcional)</span></label><textarea id="tlNotas" name="notas" rows="3" maxlength="255" placeholder="Indicaciones para quien la realiza..."></textarea><small data-error="notas"></small></div>
+    </div>
+    <footer class="panel__pie">
+      <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+      <button class="boton boton--primario" type="submit" id="btnGuardarTareaLp">Agregar tarea</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- ===================== LIMPIEZA: TODAS LAS TAREAS ===================== -->
+<dialog id="dlgTareasLp" class="dialogo--grande" aria-labelledby="dlgTareasLpTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgTareasLpTitulo">Todas las tareas de limpieza</h2><p>Consulta las tareas de cualquier día.</p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form class="filtros filtros--dialogo" id="filtrosTareasLp">
+      <div class="campo"><label for="ftDesde">Desde</label><input id="ftDesde" name="desde" type="date"></div>
+      <div class="campo"><label for="ftHasta">Hasta</label><input id="ftHasta" name="hasta" type="date"></div>
+      <div class="campo"><label for="ftEstado">Estado</label><select id="ftEstado" name="estado"><option value="">Todos</option><option>Pendiente</option><option>En progreso</option><option>Completada</option></select></div>
+    </form>
+    <div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Hora</th><th>Tarea</th><th>Lugar</th><th>Responsable</th><th>Estado</th></tr></thead><tbody id="lpTodasTareas"></tbody></table></div>
+    <div class="paginacion"><span id="lpTodasInfo"></span><div class="paginas" id="lpTodasPaginas"></div></div>
+  </div>
+</dialog>
+
+<!-- ===================== LIMPIEZA: REPORTES DE CONDICIÓN ===================== -->
+<dialog id="dlgReportesLp" class="dialogo--grande" aria-labelledby="dlgReportesLpTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgReportesLpTitulo">Reportes de condición</h2><p>Problemas reportados en las canchas y su seguimiento.</p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <div class="historial-filtros" id="lpReportesFiltros">
+      <button type="button" data-estado="" aria-pressed="true">Todos</button>
+      <button type="button" data-estado="Sin resolver" aria-pressed="false">Sin resolver</button>
+      <button type="button" data-estado="En proceso" aria-pressed="false">En proceso</button>
+      <button type="button" data-estado="Resuelto" aria-pressed="false">Resueltos</button>
+    </div>
+    <div class="tabla-contenedor"><table><thead><tr><th>Fecha</th><th>Cancha</th><th>Problema</th><th>Urgencia</th><th>Estado</th><th>Reportó</th><th></th></tr></thead><tbody id="lpListaReportes"></tbody></table></div>
+  </div>
+</dialog>
+
+<!-- ===================== LIMPIEZA: ATENDER REPORTE (solo administradores) ===================== -->
+<dialog id="dlgAtenderLp" class="dialogo--chico" aria-labelledby="dlgAtenderLpTitulo">
+  <div class="dialogo__cabeza">
+    <div><h2 id="dlgAtenderLpTitulo">Atender reporte</h2><p id="dlgAtenderLpSub"></p></div>
+    <button class="cerrar" type="button" data-cerrar aria-label="Cerrar">×</button>
+  </div>
+  <div class="dialogo__cuerpo">
+    <form id="formAtenderLp" class="formulario" novalidate>
+      <p class="form-error" hidden></p>
+      <fieldset class="campo campo--completo">
+        <legend>Nuevo estado</legend>
+        <div class="segmentos">
+          <label class="segmento"><input type="radio" name="estado" value="En proceso" checked><span>En proceso</span></label>
+          <label class="segmento"><input type="radio" name="estado" value="Resuelto"><span>Resuelto</span></label>
+        </div>
+        <small data-error="estado"></small>
+      </fieldset>
+      <div class="campo campo--completo"><label for="atNota">Nota <span class="opcional">(opcional)</span></label><textarea id="atNota" name="nota" rows="3" maxlength="255" placeholder="Qué se hizo o quién lo atiende..."></textarea><small data-error="nota"></small></div>
+      <div class="form-acciones">
+        <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="boton boton--primario" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- ===================== LIMPIEZA: CONFIRMAR ===================== -->
+<dialog id="dlgConfirmarLp" class="dialogo--chico" aria-labelledby="dlgConfirmarLpTitulo">
+  <div class="dialogo__cabeza"><div><h2 id="dlgConfirmarLpTitulo" data-titulo>¿Confirmar?</h2><p data-texto></p></div></div>
+  <div class="dialogo__cuerpo">
+    <div class="form-acciones">
+      <button class="boton boton--secundario" type="button" data-cerrar>Cancelar</button>
+      <button class="boton boton--peligro" type="button" data-aceptar>Confirmar</button>
+    </div>
+  </div>
+</dialog>
+
 <script src="/js/validacion.js"></script>
 <script src="/js/comun.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/limpieza.js"></script>
+<script src="/js/mis-partidos.js"></script>
 <script src="/js/perfil.js"></script>
 </body>
 </html>

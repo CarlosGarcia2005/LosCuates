@@ -4,14 +4,17 @@
 // =====================================================================
 const express = require('express');
 
-const { consulta, insertar, transaccion } = require('../../config/db');
+const { consulta, transaccion } = require('../../config/db');
 const V = require('../../public/js/validacion');
 const contrasenas = require('../seguridad/contrasena');
 const jwt = require('../seguridad/jwt');
 const usuarios = require('../usuarios');
 const bitacora = require('../bitacora');
 const { contexto } = require('../autenticacion');
-const { ErrorApp, errorValidacion, asincrono } = require('../errores');
+const { soloCampos } = require('../seguridad/campos');
+const { esRolDelSistema, sinAcentos } = require('../funciones');
+const P = require('../servicios/pagos');
+const { ErrorApp, errorValidacion, validacionEvadida, asincrono } = require('../errores');
 
 const router = express.Router();
 
@@ -29,9 +32,9 @@ const idValido = (valor) => {
 const describirCambios = (dif) =>
   dif.campos.map((c) => `${ETIQUETAS[c] || c}: "${dif.antes[c] ?? '—'}" → "${dif.despues[c] ?? '—'}"`).join('; ');
 
-/** Escapa los comodines de LIKE (% _ [ \) para buscar texto literal.
- *  En SQL Server cada LIKE lleva además ESCAPE '\'. */
-const escaparLike = (t) => t.replace(/[\\%_[\]]/g, (c) => `\\${c}`);
+/** Escapa los comodines de LIKE (% _ \) para buscar texto literal. */
+// En SQL Server los comodines de LIKE se vuelven texto normal encerrándolos en corchetes: % → [%]
+const escaparLike = (t) => t.replace(/[[%_]/g, (c) => `[${c}]`);
 
 async function exigirAlMenosUnAdmin(conexion) {
   if ((await usuarios.contarAdminsActivos(conexion)) === 0) {
@@ -49,7 +52,7 @@ async function validarCatalogos(idRol, idGenero) {
   if (Object.keys(errores).length) throw errorValidacion(errores);
 }
 
-/** Convierte a número los campos que la base devuelve como texto (SUM, DECIMAL). */
+/** Convierte a número los campos que la base devuelve como texto (SUM de DECIMAL). */
 const numeros = (fila) => Object.fromEntries(Object.entries(fila).map(([k, v]) => [k, v === null ? 0 : Number(v)]));
 
 /* =================================================================== */
@@ -62,25 +65,26 @@ router.get('/dashboard', asincrono(async (req, res) => {
       (SELECT COUNT(*) FROM Usuario WHERE Estado = 'Activo')                 AS usuariosActivos,
       (SELECT COUNT(*) FROM Usuario WHERE Estado <> 'Activo')                AS usuariosInactivos,
       (SELECT COUNT(*) FROM Usuario WHERE MFA_Activo = 1)                    AS usuariosMfa,
-      (SELECT COUNT(*) FROM Usuario WHERE Bloqueado_Hasta > GETDATE())       AS usuariosBloqueados,
+      (SELECT COUNT(*) FROM Usuario WHERE Bloqueado_Hasta > GETDATE())           AS usuariosBloqueados,
       (SELECT COUNT(*) FROM Reserva)                                         AS reservasTotal,
       (SELECT COUNT(*) FROM Reserva r JOIN Estado_Reserva e ON e.idEstado_Reserva = r.idEstado_Reserva
         WHERE e.Estado_Reserva = 'Pendiente')                                AS reservasPendientes,
-      (SELECT COUNT(*) FROM Reserva
-        WHERE Fecha_Reserva = CAST(GETDATE() AS DATE))                       AS reservasHoy,
-      (SELECT ISNULL(SUM(Monto), 0) FROM Pago
-        WHERE YEAR(Fecha_Pago) = YEAR(GETDATE()) AND MONTH(Fecha_Pago) = MONTH(GETDATE())) AS ingresosMes,
-      (SELECT ISNULL(SUM(Monto), 0) FROM Pago)                               AS ingresosTotal,
+      (SELECT COUNT(*) FROM Reserva WHERE Fecha_Reserva = CAST(GETDATE() AS DATE))         AS reservasHoy,
+      (SELECT ISNULL(SUM(p.Monto), 0) FROM Pago p
+         LEFT JOIN Reserva r ON r.idPago = p.idPago LEFT JOIN Estado_Reserva e ON e.idEstado_Reserva = r.idEstado_Reserva
+        WHERE p.Fecha_Pago >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND ${P.SQL_INGRESO}) AS ingresosMes,
+      (SELECT ISNULL(SUM(p.Monto), 0) FROM Pago p
+         LEFT JOIN Reserva r ON r.idPago = p.idPago LEFT JOIN Estado_Reserva e ON e.idEstado_Reserva = r.idEstado_Reserva
+        WHERE ${P.SQL_INGRESO})                                              AS ingresosTotal,
       (SELECT COUNT(*) FROM Torneo WHERE Estado_Torneo = 'Abierto')          AS torneosAbiertos,
       (SELECT COUNT(*) FROM Cancha WHERE Estado_Cancha IN ('Activa', 'Disponible')) AS canchasDisponibles,
       (SELECT COUNT(*) FROM Cancha)                                          AS canchasTotal,
       (SELECT COUNT(*) FROM Equipo)                                          AS equipos,
       (SELECT COUNT(*) FROM Bitacora WHERE Accion = 'LOGIN_EXITOSO'
-          AND Fecha >= DATEADD(HOUR, -24, GETDATE()))                        AS loginsExitosos24h,
+          AND Fecha >= DATEADD(HOUR, -24, GETDATE()))                             AS loginsExitosos24h,
       (SELECT COUNT(*) FROM Bitacora WHERE Accion IN ('LOGIN_FALLIDO', 'MFA_FALLIDO')
-          AND Fecha >= DATEADD(HOUR, -24, GETDATE()))                        AS loginsFallidos24h,
-      (SELECT COUNT(*) FROM Bitacora
-        WHERE Fecha >= DATEADD(HOUR, -24, GETDATE()))                        AS movimientos24h;
+          AND Fecha >= DATEADD(HOUR, -24, GETDATE()))                             AS loginsFallidos24h,
+      (SELECT COUNT(*) FROM Bitacora WHERE Fecha >= DATEADD(HOUR, -24, GETDATE())) AS movimientos24h;
 
     SELECT r.idRol, r.Rol, r.Nivel_Acceso,
            COUNT(u.idUsuario) AS total,
@@ -92,9 +96,8 @@ router.get('/dashboard', asincrono(async (req, res) => {
     SELECT TOP (8) idBitacora, Fecha, Correo_Usuario, Accion, Descripcion, Resultado
       FROM Bitacora ORDER BY idBitacora DESC;
 
-    SELECT TOP (6) r.Folio, CONVERT(char(10), r.Fecha_Reserva, 23) AS Fecha,
-           LEFT(CONVERT(char(8), r.Hora_Inicio, 108), 5) AS Inicio,
-           LEFT(CONVERT(char(8), r.Hora_Fin, 108), 5) AS Fin,
+    SELECT TOP (6) r.Folio, CONVERT(CHAR(10), r.Fecha_Reserva, 23) AS Fecha,
+           REPLACE(LEFT(CONVERT(CHAR(8), r.Hora_Inicio, 108), 5), ':', '.') AS Inicio, REPLACE(LEFT(CONVERT(CHAR(8), r.Hora_Fin, 108), 5), ':', '.') AS Fin,
            c.Cancha, CONCAT(u.Nombre, ' ', u.Apellido_Paterno) AS Cliente, e.Estado_Reserva AS Estado
       FROM Reserva r
       JOIN Cancha c ON c.idCancha = r.idCancha
@@ -107,7 +110,7 @@ router.get('/dashboard', asincrono(async (req, res) => {
     indicadores: numeros(indicadores[0]),
     porRol: porRol.map((x) => ({ ...x, total: Number(x.total), activos: Number(x.activos || 0) })),
     actividad,
-    proximasReservas
+    proximasReservas: proximasReservas.map((x) => ({ ...x, Inicio: x.Inicio.replace('.', ':'), Fin: x.Fin.replace('.', ':') }))
   });
 }));
 
@@ -137,8 +140,8 @@ router.get('/usuarios', asincrono(async (req, res) => {
       FROM Usuario u
       JOIN Rol r ON r.idRol = u.idRol
       JOIN Genero g ON g.idGenero = u.idGenero
-     WHERE (@buscar IS NULL OR u.Nombre LIKE @buscar ESCAPE '\\' OR u.Apellido_Paterno LIKE @buscar ESCAPE '\\'
-            OR u.Apellido_Materno LIKE @buscar ESCAPE '\\' OR u.Correo LIKE @buscar ESCAPE '\\')
+     WHERE (@buscar IS NULL OR u.Nombre LIKE @buscar OR u.Apellido_Paterno LIKE @buscar
+            OR u.Apellido_Materno LIKE @buscar OR u.Correo LIKE @buscar)
        AND (@idRol IS NULL OR u.idRol = @idRol)
        AND (@estado IS NULL OR u.Estado = @estado)
      ORDER BY u.Nombre, u.Apellido_Paterno`, {
@@ -160,13 +163,14 @@ const datosUsuario = (d) => ({
   tel: d.telefono || null, correo: d.correo, estado: d.estado
 });
 
-router.post('/usuarios', contexto('USUARIO_CREADO', 'Usuarios', 'Usuario'), asincrono(async (req, res) => {
+router.post('/usuarios', contexto('USUARIO_CREADO', 'Usuarios', 'Usuario'),
+  soloCampos(['nombre', 'apellidoPaterno', 'apellidoMaterno', 'telefono', 'correo', 'idGenero', 'idRol', 'estado', 'contrasena', 'confirmar']), asincrono(async (req, res) => {
   const v = V.validarUsuarioAdmin(req.body, { nuevo: true });
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
   const d = v.datos;
   await validarCatalogos(d.idRol, d.idGenero);
 
-  const r = await insertar(`
+  const r = await consulta(`
     INSERT INTO Usuario (idGenero, idRol, Nombre, Apellido_Paterno, Apellido_Materno,
                          Telefono, Correo, Contrasena, Estado)
     VALUES (@idGenero, @idRol, @nombre, @apP, @apM, @tel, @correo, @hash, @estado)`,
@@ -181,10 +185,11 @@ router.post('/usuarios', contexto('USUARIO_CREADO', 'Usuarios', 'Usuario'), asin
   res.status(201).json({ mensaje: 'Usuario creado correctamente.', usuario: usuarios.vista(nuevo) });
 }));
 
-router.put('/usuarios/:id', contexto('USUARIO_EDITADO', 'Usuarios', 'Usuario'), asincrono(async (req, res) => {
+router.put('/usuarios/:id', contexto('USUARIO_EDITADO', 'Usuarios', 'Usuario'),
+  soloCampos(['nombre', 'apellidoPaterno', 'apellidoMaterno', 'telefono', 'correo', 'idGenero', 'idRol', 'estado']), asincrono(async (req, res) => {
   const id = idValido(req.params.id);
   const v = V.validarUsuarioAdmin(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
   const d = v.datos;
   await validarCatalogos(d.idRol, d.idGenero);
 
@@ -222,11 +227,11 @@ router.put('/usuarios/:id', contexto('USUARIO_EDITADO', 'Usuarios', 'Usuario'), 
   });
 }));
 
-router.post('/usuarios/:id/contrasena', contexto('CONTRASENA_RESTABLECIDA', 'Usuarios', 'Usuario'),
+router.post('/usuarios/:id/contrasena', contexto('CONTRASENA_RESTABLECIDA', 'Usuarios', 'Usuario'), soloCampos(['nueva', 'confirmar']),
   asincrono(async (req, res) => {
     const id = idValido(req.params.id);
     const v = V.validarNuevaContrasena(req.body);
-    if (!v.ok) throw errorValidacion(v.errores);
+    if (!v.ok) throw validacionEvadida(v.errores);
     const u = await usuarios.porId(id);
     if (!u) throw new ErrorApp(404, 'El usuario no existe.');
 
@@ -246,7 +251,7 @@ router.post('/usuarios/:id/contrasena', contexto('CONTRASENA_RESTABLECIDA', 'Usu
     res.json({ mensaje: 'Contraseña actualizada. El usuario deberá iniciar sesión de nuevo.' });
   }));
 
-router.post('/usuarios/:id/mfa-reset', contexto('MFA_RESTABLECIDO', 'Usuarios', 'Usuario'),
+router.post('/usuarios/:id/mfa-reset', contexto('MFA_RESTABLECIDO', 'Usuarios', 'Usuario'), soloCampos([]),
   asincrono(async (req, res) => {
     const id = idValido(req.params.id);
     if (id === req.usuario.id) throw new ErrorApp(400, 'Para restablecer tu propio MFA pídeselo a otro administrador.');
@@ -266,7 +271,7 @@ router.post('/usuarios/:id/mfa-reset', contexto('MFA_RESTABLECIDO', 'Usuarios', 
     res.json({ mensaje: 'MFA restablecido. El usuario configurará un código nuevo en su próximo inicio de sesión.' });
   }));
 
-router.post('/usuarios/:id/desbloquear', contexto('CUENTA_DESBLOQUEADA', 'Usuarios', 'Usuario'),
+router.post('/usuarios/:id/desbloquear', contexto('CUENTA_DESBLOQUEADA', 'Usuarios', 'Usuario'), soloCampos([]),
   asincrono(async (req, res) => {
     const id = idValido(req.params.id);
     const u = await usuarios.porId(id);
@@ -293,10 +298,10 @@ router.get('/roles', asincrono(async (req, res) => {
   res.json({ roles: filas.map((x) => ({ ...x, usuarios: Number(x.usuarios), activos: Number(x.activos || 0) })) });
 }));
 
-router.post('/roles', contexto('ROL_CREADO', 'Roles', 'Rol'), asincrono(async (req, res) => {
+router.post('/roles', contexto('ROL_CREADO', 'Roles', 'Rol'), soloCampos(['rol', 'nivel']), asincrono(async (req, res) => {
   const v = V.validarRol(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
-  const r = await insertar('INSERT INTO Rol (Rol, Nivel_Acceso) VALUES (@rol, @nivel)', v.datos);
+  if (!v.ok) throw validacionEvadida(v.errores);
+  const r = await consulta('INSERT INTO Rol (Rol, Nivel_Acceso) VALUES (@rol, @nivel)', v.datos);
   await bitacora.registrar(req, {
     accion: 'ROL_CREADO', modulo: 'Roles', tabla: 'Rol', idRegistro: r.insertId,
     descripcion: `Creó el rol "${v.datos.rol}" con nivel de acceso "${v.datos.nivel}"`,
@@ -305,16 +310,20 @@ router.post('/roles', contexto('ROL_CREADO', 'Roles', 'Rol'), asincrono(async (r
   res.status(201).json({ mensaje: 'Rol creado correctamente.', id: r.insertId });
 }));
 
-router.put('/roles/:id', contexto('ROL_EDITADO', 'Roles', 'Rol'), asincrono(async (req, res) => {
+router.put('/roles/:id', contexto('ROL_EDITADO', 'Roles', 'Rol'), soloCampos(['rol', 'nivel']), asincrono(async (req, res) => {
   const id = idValido(req.params.id);
   const v = V.validarRol(req.body);
-  if (!v.ok) throw errorValidacion(v.errores);
+  if (!v.ok) throw validacionEvadida(v.errores);
 
   const [antes] = await consulta('SELECT Rol AS rol, Nivel_Acceso AS nivel FROM Rol WHERE idRol = @id', { id });
   if (!antes) throw new ErrorApp(404, 'El rol no existe.');
 
   if (id === req.usuario.idRol && v.datos.nivel !== 'Administrador') {
     throw new ErrorApp(400, 'No puedes quitarle el nivel de administrador a tu propio rol.');
+  }
+  // Equipos, Árbitros y Limpieza reconocen estos roles por su nombre
+  if (esRolDelSistema(antes.rol) && sinAcentos(antes.rol) !== sinAcentos(v.datos.rol)) {
+    throw errorValidacion({ rol: `"${antes.rol}" lo usan los módulos de Equipos, Árbitros o Limpieza; su nombre no se puede cambiar.` });
   }
 
   await transaccion(async (cx) => {
@@ -346,14 +355,13 @@ function filtrosBitacora(query) {
 
   if (FECHA.test(q('desde'))) { p.desde = q('desde'); condiciones.push('b.Fecha >= @desde'); }
   if (FECHA.test(q('hasta'))) { p.hasta = q('hasta'); condiciones.push('b.Fecha < DATEADD(DAY, 1, CAST(@hasta AS DATE))'); }
-  if (q('usuario')) { p.usuario = `%${escaparLike(q('usuario').slice(0, 100))}%`; condiciones.push("b.Correo_Usuario LIKE @usuario ESCAPE '\\'"); }
+  if (q('usuario')) { p.usuario = `%${escaparLike(q('usuario').slice(0, 100))}%`; condiciones.push('b.Correo_Usuario LIKE @usuario'); }
   if (/^[A-Z_]{3,40}$/.test(q('accion'))) { p.accion = q('accion'); condiciones.push('b.Accion = @accion'); }
   if (q('modulo')) { p.modulo = q('modulo').slice(0, 40); condiciones.push('b.Modulo = @modulo'); }
   if (q('resultado') === 'Éxito' || q('resultado') === 'Fallo') { p.resultado = q('resultado'); condiciones.push('b.Resultado = @resultado'); }
   if (q('q')) {
     p.texto = `%${escaparLike(q('q').slice(0, 200))}%`;
-    condiciones.push("(b.Descripcion LIKE @texto ESCAPE '\\' OR b.Datos_Anteriores LIKE @texto ESCAPE '\\'"
-      + " OR b.Datos_Nuevos LIKE @texto ESCAPE '\\' OR b.IP LIKE @texto ESCAPE '\\')");
+    condiciones.push('(b.Descripcion LIKE @texto OR b.Datos_Anteriores LIKE @texto OR b.Datos_Nuevos LIKE @texto OR b.IP LIKE @texto)');
   }
   return { where: condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '', parametros: p };
 }
@@ -393,8 +401,7 @@ const csvCelda = (v) => {
 router.get('/bitacora/exportar', asincrono(async (req, res) => {
   const { where, parametros } = filtrosBitacora(req.query);
   const filas = await consulta(`
-    SELECT TOP (10000)
-           b.idBitacora, CONVERT(char(19), b.Fecha, 120) AS Fecha, b.Correo_Usuario, b.Rol_Usuario,
+    SELECT TOP (10000) b.idBitacora, REPLACE(CONVERT(CHAR(19), b.Fecha, 120), ':', '.') AS Fecha, b.Correo_Usuario, b.Rol_Usuario,
            b.Accion, b.Modulo, b.Tabla_Afectada, b.idRegistro, b.Descripcion,
            b.Datos_Anteriores, b.Datos_Nuevos, b.IP, b.Navegador, b.Resultado, b.Origen
       FROM Bitacora b ${where}
@@ -408,9 +415,12 @@ router.get('/bitacora/exportar', asincrono(async (req, res) => {
 
   const columnas = ['idBitacora', 'Fecha', 'Correo_Usuario', 'Rol_Usuario', 'Accion', 'Modulo', 'Tabla_Afectada',
     'idRegistro', 'Descripcion', 'Datos_Anteriores', 'Datos_Nuevos', 'IP', 'Navegador', 'Resultado', 'Origen'];
-  const lineas = [columnas.join(',')].concat(filas.map((f) =>
-    columnas.map((c) => csvCelda(f[c])).join(',')));
-  const fecha = new Date().toISOString().slice(0, 10);
+  const lineas = [columnas.join(',')].concat(filas.map((f) => {
+    const fila = { ...f, Fecha: f.Fecha.replace(/\./g, ':').replace(/^(\d{4}-\d{2}-\d{2}) /, '$1 ') };
+    return columnas.map((c) => csvCelda(fila[c])).join(',');
+  }));
+  const ahora = new Date();
+  const fecha = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`; // fecha local
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="bitacora_${fecha}.csv"`);

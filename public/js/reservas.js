@@ -20,12 +20,14 @@
     comprobante: () => icono(['path', { d: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z' }], ['path', { d: 'M14 3v6h6M9 14h6M9 17h4' }]),
     subir: () => icono(['path', { d: 'M12 16V4M7 9l5-5 5 5M5 20h14' }]),
     finalizar: () => icono(['path', { d: 'M5 21V4M5 4h11l-2 4 2 4H5' }]),
-    cancelar: () => icono(['path', { d: 'M6 6l12 12M18 6 6 18' }])
+    cancelar: () => icono(['path', { d: 'M6 6l12 12M18 6 6 18' }]),
+    enlace: () => icono(['path', { d: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7' }], ['path', { d: 'M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7' }])
   };
 
   const ESTADOS = {
     pendiente: ['Pendiente de pago', 'etiqueta--azul'],
     por_validar: ['Por validar', 'etiqueta--ambar'],
+    discrepancia: ['Con discrepancia', 'etiqueta--rojo'],
     pagada: ['Pagada', 'etiqueta--verde'],
     confirmada: ['Confirmada', 'etiqueta--verde'],
     cancelada: ['Cancelada', 'etiqueta--rojo'],
@@ -67,18 +69,20 @@
     if (r.estadoVista === 'pendiente') {
       lista.push(botonAccion(`Registrar pago de ${r.folio}`, ICONOS.pagar, () => abrirReserva(r.idReserva), 'boton--icono-verde'));
     }
-    if (r.estadoVista === 'por_validar') {
+    if (r.estadoVista === 'por_validar' || r.estadoVista === 'discrepancia') {
       lista.push(botonAccion(`Validar pago de ${r.folio}`, ICONOS.validar, () => validar(r), 'boton--icono-verde'));
     }
     if (r.idPago) {
       lista.push(r.tieneComprobante
         ? botonAccion(`Ver comprobante de ${r.folio}`, ICONOS.comprobante, () => verComprobante(r))
         : botonAccion(`Subir comprobante de ${r.folio}`, ICONOS.subir, () => elegirComprobanteFila(r)));
+      lista.push(botonAccion(`Comprobante de ${r.folio} desde enlace`, ICONOS.enlace, () => abrirEnlace(r)));
     }
     if ((r.estadoVista === 'pagada' || r.estadoVista === 'confirmada') && r.fecha <= hoy) {
       lista.push(botonAccion(`Marcar ${r.folio} como finalizada`, ICONOS.finalizar, () => cambiarEstado(r, 'finalizar')));
     }
-    if (['pendiente', 'por_validar', 'pagada', 'confirmada'].includes(r.estadoVista)) {
+    // La reserva de un partido de torneo se cambia o elimina desde Árbitros
+    if (!r.idJuego && ['pendiente', 'por_validar', 'discrepancia', 'pagada', 'confirmada'].includes(r.estadoVista)) {
       lista.push(botonAccion(`Cancelar ${r.folio}`, ICONOS.cancelar, () => cambiarEstado(r, 'cancelar'), 'boton--icono-rojo'));
     }
     return h('div', { class: 'celda-acciones' }, ...lista);
@@ -104,7 +108,8 @@
     $('tablaReservas').replaceChildren(...(d.registros.length ? d.registros.map((x) => {
       const [texto, clase] = ESTADOS[x.estadoVista] || [x.estado, ''];
       return fila(
-        celda(h('span', { class: 'folio' }, x.folio)),
+        celda(h('div', null, h('span', { class: 'folio' }, x.folio),
+          x.idJuego ? h('small', { class: 'texto-tenue', title: x.descripcion || '' }, h('br'), `Partido · ${x.torneo}`) : null)),
         celda(h('div', { class: 'celda-persona' },
           h('span', { class: 'avatar' }, iniciales(x.cliente)),
           h('div', null, h('strong', null, x.cliente), h('small', null, x.equipo || x.correo)))),
@@ -114,7 +119,7 @@
         celda(x.idPago
           ? h('div', { class: 'pago-celda' }, h('strong', null, dinero(x.monto)), h('small', null, x.metodo))
           : h('span', { class: 'texto-tenue' }, 'Sin pago')),
-        celda(h('span', { class: `etiqueta etiqueta--punto ${clase}` }, texto)),
+        celda(h('span', { class: `etiqueta etiqueta--punto ${clase}`, title: x.estadoVista === 'discrepancia' && x.notaPago ? `Discrepancia: ${x.notaPago}` : null }, texto)),
         celda(acciones(x)));
     }) : [filaVacia(8, 'No hay reservas con esos filtros.')]));
 
@@ -202,6 +207,39 @@
     const res = await subirComprobante(r.idReserva, archivo);
     aviso(res.mensaje, res.ok ? 'exito' : 'error');
     if (res.ok) cargarReservas();
+  });
+
+  /* -------------------------------------------------------------- */
+  /*  [OWASP A10] Comprobante desde enlace                            */
+  /*  Aquí solo se revisa el formato. Lo importante (anti-SSRF) lo    */
+  /*  revisa el servidor: solo https públicos, nada interno.          */
+  /* -------------------------------------------------------------- */
+  const formEnlace = $('formEnlace');
+  limpiarAlEscribir(formEnlace);
+
+  function abrirEnlace(r) {
+    estado.filaEnlace = r;
+    formEnlace.reset();
+    limpiarErrores(formEnlace);
+    $('dlgEnlaceSub').textContent = `${r.folio} · ${r.cliente || ''}`.trim();
+    $('dlgEnlace').showModal();
+    $('eUrl').focus();
+  }
+
+  formEnlace.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const r = estado.filaEnlace;
+    if (!r) return;
+    const v = V.validarEnlace(datosFormulario(formEnlace));
+    if (!v.ok) return mostrarErrores(formEnlace, v.errores);
+    const boton = formEnlace.querySelector('[type=submit]');
+    ocupado(boton, true, 'Descargando…');
+    const res = await api('POST', `/api/admin/reservas/${r.idReserva}/comprobante-url`, v.datos);
+    ocupado(boton, false);
+    if (!res.ok) return mostrarErrores(formEnlace, res.datos.errores || {}, res.datos.mensaje);
+    $('dlgEnlace').close();
+    aviso(res.datos.mensaje);
+    cargarReservas();
   });
 
   /* -------------------------------------------------------------- */

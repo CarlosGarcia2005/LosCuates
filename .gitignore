@@ -1,3 +1,7 @@
 node_modules/
 .env
+.env.*
+!.env.example
 almacen/
+# Huellas del código firmadas con TU MFA_CLAVE (se generan con npm run firmar-codigo)
+integridad.json
